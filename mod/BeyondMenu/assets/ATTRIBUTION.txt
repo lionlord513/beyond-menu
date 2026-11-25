@@ -1,0 +1,13 @@
+Native item and vehicle pictures were captured from Drive Beyond Horizons,
+build 26437602. Game content belongs to its respective owners. No game meshes,
+textures extracted from packages, or ZodMenu assets are included.
+
+Optional vehicle and nitrous pictures show models from the user's installed
+Beyond mods. They are displayed only while the corresponding mod is present.
+The imported Hornet model retains its GPL v2-or-later attribution and source
+distribution in BeyondApocalypse/assets/gyrocopter. The supplied nitrous model
+archive contained no author or license notice. NOS and vehicle trademarks
+remain with their owners. No model geometry or other mods are bundled here.
+
+The color wheel is generated from the HSV color model. The frame, borders,
+buttons and controls use native Unreal widgets.

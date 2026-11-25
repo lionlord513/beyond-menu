@@ -1,0 +1,7 @@
+/build/
+/mod/BeyondMenu/state/
+/mod/BeyondMenu/settings.ini*
+*.log
+*.pdb
+*.lib
+__pycache__/

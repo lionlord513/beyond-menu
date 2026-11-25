@@ -1,0 +1,12 @@
+Copyright (c) 2026 lionlord513. All rights reserved.
+
+Permission is granted to download, install and use official BeyondMenu releases
+for personal gameplay. Source is provided for inspection. No other redistribution
+or sublicensing permission is granted by this notice. Contact the repository
+owner for permission.
+
+Game images are rendered from Drive Beyond Horizons. Game assets, Unreal Engine
+and dependencies retain their respective ownership and terms. No game meshes,
+ZodMenu code, personal access controls or other Beyond mods are bundled.
+
+The mod is provided as-is, without warranty.
