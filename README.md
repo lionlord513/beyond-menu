@@ -17,6 +17,10 @@ BeyondMenu does not include Apocalypse, Tuning, a personal menu, or any other mo
 
 ## Install
 
+With the game closed, drag the unopened Nexus ZIP into Beyond Mod Manager and click Install. BMM checks UE4SS during installation. To enable the optional Apocalypse or Tuning items, run the included installer once after installing those mods.
+
+For a manual installation:
+
 1. Install a compatible UE4SS loader. This build was tested with UE4SS 3.0.1 beta, commit `8f7b2ca3`, and game build `26437602`.
 2. Close the game and extract the whole ZIP.
 3. Run `Install.ps1` with PowerShell. For a different Steam library, run:
@@ -33,7 +37,7 @@ You can also extract the `DriveBeyondHorizons` folder into the game folder for t
 
 Public releases: https://github.com/lionlord513/beyond-menu/releases
 
-Beyond Mod Manager can use the included update metadata. No manager is required: run `Update.ps1` inside `ue4ss/Mods/BeyondMenu` to fetch and install the latest release automatically. It checks the package checksum, preserves your settings, and requires the game to be closed. Add `-CheckOnly` to check without installing.
+Beyond Mod Manager can use the included update metadata. No manager is required: run `Update.ps1` from the extracted download (use `-GamePath` for a custom Steam library) to fetch and install the latest release automatically. It checks the package checksum, preserves your settings, and requires the game to be closed. Add `-CheckOnly` to check without installing.
 
 ## Use
 

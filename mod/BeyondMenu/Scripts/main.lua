@@ -1,6 +1,6 @@
 -- BeyondMenu has its own state, input bindings and UI. No companion mod required.
 local root=debug.getinfo(1,'S').source:sub(2):gsub('\\','/'):match('^(.*)/Scripts/[^/]+$')
-local B={version='0.1.0',root=assert(root),queue={},toggles={},restore={},message='Ready',active=true}
+local B={version='0.1.1',root=assert(root),queue={},toggles={},restore={},message='Ready',active=true}
 function B.valid(o) return o and o:IsValid() end
 function B.log(s) print('[BeyondMenu] '..tostring(s)..'\n') end
 function B.status(s) B.message=tostring(s):gsub('^.-:%d+: ',''):match('[^\r\n]+'):sub(1,180);B.log(s);if B.ui then B.ui.status() end end

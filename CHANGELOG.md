@@ -1,3 +1,7 @@
+# 0.1.1
+
+- Fix BMM ZIP import, declare the tested UE4SS build, and initialize thumbnail storage before opening the menu.
+
 # 0.1.0
 
 - First standalone BeyondMenu release, opened with F8.

@@ -1,12 +1,17 @@
 {
   "Id": "beyondmenu",
   "Name": "BeyondMenu",
-  "Version": "0.1.0",
+  "Version": "0.1.1",
   "Channel": "stable",
   "Description": "An independent F8 menu with item and car catalogs, player tools and custom colors.",
-  "Changelog": "First public BeyondMenu build.",
-  "Dependencies": ["UE4SS"],
-  "LoadAfter": ["BeyondApocalypse", "BeyondTuning"],
+  "Changelog": "Fixes ZIP installation in Beyond Mod Manager and prepares the thumbnail cache on first launch.",
+  "Dependencies": [
+    "UE4SS"
+  ],
+  "LoadAfter": [
+    "BeyondApocalypse",
+    "BeyondTuning"
+  ],
   "Preserve": [
     "DriveBeyondHorizons/Binaries/Win64/ue4ss/Mods/BeyondMenu/settings.ini",
     "DriveBeyondHorizons/Binaries/Win64/ue4ss/Mods/BeyondMenu/state"
@@ -19,5 +24,6 @@
     "ManifestAsset": "bmm-mod.json",
     "Sha256Asset": "SHA256SUMS.txt",
     "Kind": "mod"
-  }
+  },
+  "RuntimeProfile": "ue4ss-8f7b2ca3"
 }

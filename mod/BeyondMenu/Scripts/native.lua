@@ -1,6 +1,13 @@
 return function(B)
  local N={queue={},requested={},textures={},revision=3};local dll=B.root..'/assets/native/BeyondMenuImaging.dll'
- N.render=assert(package.loadlib(dll,'bm_render'));N.pointer=assert(package.loadlib(dll,'bm_pointer'))
+ local function loadHelper(name)
+  local fn, err = package.loadlib(dll, name)
+  assert(fn, 'BeyondMenu could not load BeyondMenuImaging.dll. Reinstall the complete ZIP and check UE4SS with BMM Settings > repair Mod. ' .. tostring(err))
+  return fn
+ end
+ N.render = loadHelper('bm_render')
+ N.pointer = loadHelper('bm_pointer')
+ N.pointer() -- Create the cache before the first background thumbnail request.
  local done=B.root..'/state/paint-done.txt'
  function N.mouse()
   N.pointer();local f=io.open(B.root..'/state/pointer.txt','r');if not f then return false,0,0 end
