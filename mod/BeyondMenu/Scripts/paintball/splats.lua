@@ -21,7 +21,8 @@ return function(B, R)
    -- centimetres even on heavily scaled walls and terrain tiles.
    mesh:SetAbsolute(false, false, true)
   end
-  mesh:K2_SetRelativeTransform({Translation=mark.at, Rotation=A.identity.Rotation, Scale3D=A.identity.Scale3D}, false, {}, true)
+  local position = B.valid(target) and mark.at or R.worldPoint(mark)
+  mesh:K2_SetRelativeTransform({Translation=position, Rotation=A.identity.Rotation, Scale3D=A.identity.Scale3D}, false, {}, true)
   mesh:SetHiddenInGame(false, false)
   mesh:SetVisibility(true, false)
   return {visual=mesh, owner=actor, dirty=true}
@@ -52,10 +53,59 @@ return function(B, R)
    patch.limits[i] = h and radius*3.9 or math.max(1.5,radius*.45)
   end
   if mark.drip>0 then
-   patch.dripHeight = sample(P.add(origin,down,mark.drip))
-   patch.dripLimit = patch.dripHeight and mark.drip or math.min(mark.drip,radius)
+   patch.runHeights={[0]=0};patch.step=mark.drip/4;patch.dripLimit=mark.drip
+   for i=1,4 do
+    local d=i*patch.step;local h=sample(P.add(origin,down,d))
+    if not h then
+     local midpoint=d-patch.step*.5
+     local mid=sample(P.add(origin,down,midpoint))
+     patch.dripLimit=mid and midpoint or (i-1)*patch.step
+     patch.runHeights[i]=mid or patch.runHeights[i-1]
+     break
+    end
+    patch.runHeights[i]=h
+   end
   end
   return patch
+ end
+
+ local function appendVertex(geo, position, normal)
+  geo.vertices[#geo.vertices+1]=position;geo.normals[#geo.normals+1]=normal
+  geo.uv[#geo.uv+1]={X=.5,Y=.5}
+  return #geo.vertices-1
+ end
+ local function triangle(geo,a,b,c)
+  local t=geo.triangles;t[#t+1]=a;t[#t+1]=b;t[#t+1]=c
+ end
+
+ -- Add a low rounded meniscus over the original footprint. The irregular
+ -- perimeter expands with volume while the older paint flecks remain in place.
+ local function puddle(geo,mark,patch,record)
+  if mark.pool<=0 then return end
+  local settling=math.exp(-mark.wet/1.1)
+  record.poolReach=math.max(record.poolReach or 0,mark.pool*(1-.28*settling))
+  local r=P.random(mark.seed+447)
+  local phi1,phi2,phi3=r()*tau,r()*tau,r()*tau
+  local n=mark.normal;local u,v=patch.u,patch.v
+  local depth=1+.28*settling
+  local centre=appendVertex(geo,P.add(origin,n,.52*depth),n)
+  local previous
+  for _,ring in ipairs({{.62,.46,.015},{.91,.33,.055},{1,.10,.17}}) do
+   local rim={}
+   for i=1,40 do
+    local a=tau*i/40;local x,y=math.cos(a),math.sin(a)
+    local outline=record.poolReach*(1+.11*math.sin(3*a+phi1)+.075*math.sin(5*a+phi2)+.045*math.sin(8*a+phi3))
+    local radial=P.add(P.add(origin,u,x*1.14),v,y)
+    local pos=P.add(P.add(origin,radial,ring[1]*outline),n,ring[2]*depth)
+    rim[i]=appendVertex(geo,pos,P.unit(P.add(n,radial,ring[3])))
+   end
+   for i=1,40 do
+    local j=i%40+1
+    if previous then triangle(geo,previous[i],rim[i],rim[j]);triangle(geo,previous[i],rim[j],previous[j])
+    else triangle(geo,centre,rim[i],rim[j])end
+   end
+   previous=rim
+  end
  end
 
  -- A continuous ribbon connects each hanging droplet to the deposit. Only its
@@ -66,44 +116,44 @@ return function(B, R)
   local random = P.random(mark.seed+537)
   -- Rewetting an existing run adds paint at once. It must not pull a stream
   -- back up the wall whenever an additional paintball resets the wet timer.
-  local growth=mark.drip*(1-.65*math.exp(-mark.wet/3))
+  local growth=mark.drip*(1-.48*math.exp(-mark.wet/2.4))
   record.dripReach=math.max(record.dripReach or 0,growth)
   local length=math.min(patch.dripLimit,record.dripReach)
   if length<radius*.4 then return end
-  local function vertex(at)
-   geo.vertices[#geo.vertices+1]=at
-   geo.normals[#geo.normals+1]=mark.normal
-   geo.uv[#geo.uv+1]={X=.5,Y=.5}
-   return #geo.vertices-1
-  end
-  local function triangle(a,b,c)
-   local t=geo.triangles;t[#t+1]=a;t[#t+1]=b;t[#t+1]=c
-  end
-  for line=1,3 do
-   local reach=length*(line==2 and 1 or .45+random()*.42)
-   local width=.24+math.min(.72,mark.volume*.025)
-   local lateral=(line-2)*radius*.48
+  local count=math.min(4,1+math.floor(mark.volume/3))
+  for line=1,count do
+   local reach=length*(line==1 and 1 or .38+random()*.55)
+   local width=.40+math.min(.78,mark.volume*.040)
+   local lateral=(line==1 and 0 or ((line%2)*2-1)*math.floor(line/2)*.42)*radius
    local phase=random()*tau
-   local left,right
+   local left,middle,right
    local function point(distance)
-    local bend=lateral+.32*math.sin(distance*.18+phase)
-    local height=(patch.dripHeight or 0)*(distance/mark.drip)^2+.42
+    local bend=lateral+.35*math.sin(distance*.15+phase)+.18*math.sin(distance*.32+phase)
+    local t=math.min(4,distance/patch.step)
+    local k=math.min(3,math.floor(t));local h0=patch.runHeights[k] or 0;local h1=patch.runHeights[k+1] or h0
+    local height=h0+(h1-h0)*(t-k)+.54
     return P.add(P.add(P.add(origin,down,distance),side,bend),mark.normal,height)
    end
    for step=0,8 do
     local fraction=step/8
     local at=point(reach*fraction)
     local w=width*(1-.5*fraction)
-    local l=vertex(P.add(at,side,-w));local r=vertex(P.add(at,side,w))
-    if left then triangle(left,right,l);triangle(right,r,l) end
-    left,right=l,r
+    local l=appendVertex(geo,P.add(at,side,-w),P.unit(P.add(mark.normal,side,-.22)))
+    local m=appendVertex(geo,P.add(at,mark.normal,.16),mark.normal)
+    local r=appendVertex(geo,P.add(at,side,w),P.unit(P.add(mark.normal,side,.22)))
+    if left then
+     triangle(geo,left,middle,l);triangle(geo,middle,m,l)
+     triangle(geo,middle,right,m);triangle(geo,right,r,m)
+    end
+    left,middle,right=l,m,r
    end
-   local at=point(reach);local centre=vertex(at);local rim={}
+   local at=point(reach);local centre=appendVertex(geo,P.add(at,mark.normal,.19),mark.normal);local rim={}
    for k=1,10 do
     local angle=tau*k/10
-    rim[k]=vertex(P.add(P.add(at,side,math.cos(angle)*width*1.5),down,math.sin(angle)*width*2))
+    local radial=P.add(P.add(origin,side,math.cos(angle)*1.45),down,math.sin(angle)*2)
+    rim[k]=appendVertex(geo,P.add(at,radial,width),P.unit(P.add(mark.normal,radial,.17)))
    end
-   for k=1,10 do triangle(centre,rim[k],rim[k%10+1]) end
+   for k=1,10 do triangle(geo,centre,rim[k],rim[k%10+1]) end
   end
  end
 
@@ -115,13 +165,14 @@ return function(B, R)
    record=create(mark,target);R.rendered[mark]=record
   end
   local down=P.unit(P.add(mark.gravity,mark.normal,-P.dot(mark.gravity,mark.normal)))
-  local radius=math.max(mark.radius*1.25,mark.pool)
+  local radius=mark.radius*1.25
   if not record.patch or record.volume~=mark.volume then
-   record.patch=surface(mark,record,target,radius,down);record.volume=mark.volume
+   record.patch=surface(mark,record,target,math.max(radius,mark.pool),down);record.volume=mark.volume
   end
   local patch=record.patch
   local geo=P.geometry({seed=mark.seed,normal=mark.normal,at=origin,radius=radius,
-   stretch=mark.stretch,drip=0,pool=0},0)
+   stretch=mark.stretch,angle=mark.angle,imprints=mark.imprints,drip=0,pool=0},0)
+  puddle(geo,mark,patch,record)
   local keep={}
   for i,point in ipairs(geo.vertices) do
    local x,y=P.dot(point,patch.u),P.dot(point,patch.v)
@@ -151,7 +202,8 @@ return function(B, R)
    end
   end
   record.visual:CreateMeshSection(0,geo.vertices,indices,geo.normals,geo.uv,{},{},false)
-  record.visual:SetMaterial(0,A.material(mark.color,.22))
+  -- A broad highlight keeps the pigment visible in direct desert sunlight.
+  record.visual:SetMaterial(0,A.material(mark.color,mark.volume>1 and .63 or .56))
   record.triangles=#indices/3
   record.nextDraw=R.clock+.35
   record.dirty=false

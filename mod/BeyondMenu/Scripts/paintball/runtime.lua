@@ -88,13 +88,18 @@ return function(B)
   end
  end
  function R.target(c,bone)
-  if not valid(c)then return '', '', nil end
-  local actor=c:GetOwner();if not valid(actor)then return '', '', nil end
+  if not valid(c)then return '', 'WorldOrigin', nil end
+  local actor=c:GetOwner();if not valid(actor)then return '', 'WorldOrigin', nil end
   local id=guid(actor)
   -- GUIDs survive item movement and native save recreation. Static level paths
   -- remain stable; procedural terrain uses world-space anchors instead.
   local key=id and('g:'..id)or('p:'..actor:GetFullName())
-  if not id and (c:GetFullName():find('ProceduralMesh',1,true)or actor:GetFullName():find('Landscape',1,true))then return '', '', nil end
+  if not id then
+   local kind=actor:GetClass():GetFName():ToString()
+   if kind:find('Landscape',1,true)or kind:find('PRRoad',1,true)or c:GetClass():GetFName():ToString()=='ProceduralMeshComponent' then
+    return '', 'WorldOrigin', nil
+   end
+  end
   local name=c:GetFName():ToString();R.targets[key..'|'..name]=c
   return key,name,c
  end
@@ -107,12 +112,34 @@ return function(B)
   local owner,component,c=R.target(hit.component,hit.bone)
   local n=P.unit(hit.normal);local mark=P.impact(hit.at,n,ball.color,ball.seed,math.sqrt(P.dot(ball.velocity,ball.velocity)),P.dot(P.unit(ball.velocity),n))
   mark.owner=owner;mark.component=component;mark.bone=hit.bone
-  if valid(c)then local tr=transform(c,mark.bone);mark.at=mathlib:InverseTransformLocation(tr,mark.at);mark.normal=P.unit(mathlib:InverseTransformDirection(tr,mark.normal));mark.gravity=P.unit(mathlib:InverseTransformDirection(tr,P.v(0,0,-1)))end
-  -- Only nearby deposits on the same surface can feed a drip/pool.
-  for i=#J.marks,math.max(1,#J.marks-2048),-1 do local old=J.marks[i]
-   if old.owner==owner and old.component==component and old.bone==mark.bone and P.distance(old.at,mark.at)<36 and P.dot(old.normal,mark.normal)>.94 and old.wet<25 then
-    P.accumulate(old,mark.color);old.seenAt=R.clock;R.fresh=old;local r=R.rendered[old];if r then r.dirty=true end;return old
+  local incoming=P.unit(ball.velocity);local scale
+  if owner=='' and component=='WorldOrigin'then
+   local origin=game:GetWorldOriginLocation(R.pawn or B.player());R.origin=P.v(origin.X,origin.Y,origin.Z)
+   mark.at=P.add(mark.at,R.origin)
+  elseif valid(c)then
+   local tr=transform(c,mark.bone);scale=tr.Scale3D
+   mark.at=mathlib:InverseTransformLocation(tr,mark.at);mark.normal=P.unit(mathlib:InverseTransformDirection(tr,mark.normal))
+   mark.gravity=P.unit(mathlib:InverseTransformDirection(tr,P.v(0,0,-1)));incoming=mathlib:InverseTransformDirection(tr,incoming)
+  end
+  if math.abs(P.dot(mark.normal,incoming))<.86 then
+   local u,v=P.basis(mark.normal);mark.angle=math.atan(P.dot(incoming,v),P.dot(incoming,u))
+  end
+  -- Use physical centimetres even on scaled surfaces, and choose the closest
+  -- wet deposit. Slight shot spread can feed a shared pool or vertical run.
+  local closest,offset,best
+  for i=#J.marks,math.max(1,#J.marks-2048),-1 do
+   local old=J.marks[i]
+   if old.owner==owner and old.component==component and old.bone==mark.bone then
+    local distance,d=P.depositOffset(old,mark,scale)
+    if distance and (not best or distance<best)then closest,offset,best=old,d,distance end
    end
+  end
+  if closest then
+   local u,v=P.basis(closest.normal);local hits=closest.imprints or {};closest.imprints=hits
+   if #hits==4 then table.remove(hits,1)end
+   hits[#hits+1]={x=P.dot(offset,u),y=P.dot(offset,v),radius=mark.radius,seed=mark.seed}
+   P.accumulate(closest,mark.color);closest.seenAt=R.clock;R.fresh=closest
+   local r=R.rendered[closest];if r then r.dirty=true end;return closest
   end
   mark.seenAt=R.clock;J.marks[#J.marks+1]=mark;R.fresh=mark;return mark
  end
@@ -120,12 +147,24 @@ return function(B)
   if p.owner==''then return nil end
   local c=R.targets[p.owner..'|'..p.component];if valid(c)then return c end
  end
- function R.worldPoint(p)local c=R.resolve(p);return valid(c)and mathlib:TransformLocation(transform(c,p.bone),p.at)or p.owner==''and p.at or nil end
+ function R.worldPoint(p)
+  if p.owner=='' then
+   if p.component=='WorldOrigin' and R.origin then return P.add(p.at,R.origin,-1)end
+   return p.at
+  end
+  local c=R.resolve(p);if valid(c)then return mathlib:TransformLocation(transform(c,p.bone),p.at)end
+ end
  R.draw=dofile(root..'splats.lua')(B,R)
  R.projectiles=dofile(root..'projectile.lua')(B,R)
  function R.scan()
   if not J.ready then J.load(game:GetGameInstance(B.pc()).MainSaveGame)end
   if not J.ready then return end
+  local o=game:GetWorldOriginLocation(B.player());local previous=R.lastScanOrigin;R.origin=P.v(o.X,o.Y,o.Z);R.lastScanOrigin=R.origin
+  if previous and P.distance(previous,R.origin)>0 then
+   for mark,r in pairs(R.rendered)do
+    if mark.owner=='' and mark.component=='WorldOrigin' and valid(r.visual)then r.visual:K2_SetWorldLocation(R.worldPoint(mark),false,{},true)end
+   end
+  end
   if not R.frameHook then R.frameHook={RegisterHook('/Game/BP/Player/PlayerBase.PlayerBase_C:ReceiveTick',function(ctx,dt)
    if same(ctx:get(),B.player())then local frameDt=dt:get();if #R.balls>0 then R.projectiles.frame(frameDt)end;local ok,e=pcall(R.view.frame,frameDt);if not ok and R.viewError~=tostring(e)then R.viewError=tostring(e);B.log('Paintball view: '..tostring(e))end end
   end)}end
@@ -197,7 +236,8 @@ return function(B)
    local at=R.worldPoint(mark)
    local r=R.rendered[mark]
    if at and P.distance(at,pos)<8000^2 then
-    if builds<2 and (not r or r.dirty or (mark.drip>0 and mark.wet<24 and R.clock>(r.nextDraw or 0))) then
+    local flowing=(mark.drip>0 and mark.wet<18)or(mark.pool>0 and mark.wet<5)
+    if builds<2 and (not r or r.dirty or (flowing and R.clock>(r.nextDraw or 0))) then
      R.draw(mark);builds=builds+1
     end
    elseif r then
@@ -212,7 +252,7 @@ return function(B)
  end
  function R.reset()
   R.view.reset();R.interaction.reset()
-  R.fresh=nil;R.pawn=nil;R.resolveAt=nil;R.resolveIndex=nil;R.paintIndex=nil;R.nextItemLookup=nil
+  R.fresh=nil;R.pawn=nil;R.origin=nil;R.lastScanOrigin=nil;R.resolveAt=nil;R.resolveIndex=nil;R.paintIndex=nil;R.nextItemLookup=nil
 
   for _,r in pairs(R.rendered)do if valid(r.owner)and valid(r.visual)then r.visual:K2_DestroyComponent(r.owner)end end
   for _,r in pairs(R.items)do if valid(r.actor)then clearContents(r)end end

@@ -19,6 +19,13 @@ return function(B,P)
    local fields={'P',esc(p.owner or''),esc(p.component or''),esc(p.bone or''),p.seed,p.radius,p.stretch,p.volume,p.wet,p.drip,p.pool}
    for _,v in ipairs({p.at,p.normal,p.gravity})do for _,k in ipairs({'X','Y','Z'})do fields[#fields+1]=('%.9g'):format(v[k])end end
    for i=1,3 do fields[#fields+1]=('%.9g'):format(p.color[i])end
+   if p.angle or p.imprints then
+    fields[#fields+1]=p.angle and ('%.8g'):format(p.angle)or''
+    local hits={};for _,h in ipairs(p.imprints or {})do
+     hits[#hits+1]=('%.6g,%.6g,%.6g,%d'):format(h.x,h.y,h.radius,h.seed)
+    end
+    fields[#fields+1]=table.concat(hits,'|')
+   end
    lines[#lines+1]=table.concat(fields,'\t')
   end
   return table.concat(lines,'\n')..'\n'
@@ -32,9 +39,18 @@ return function(B,P)
     local count=num(w[4]);assert(count%1==0 and count>=0 and count<=50 and not items[w[2]],'Invalid paintball count')
     items[w[2]]={kind=w[3],count=count,color=P.color({num(w[5]),num(w[6]),num(w[7])})}
    else
-    assert(w[1]=='P'and #w==23,'Invalid paint mark')
+    assert(w[1]=='P'and (#w==23 or #w==25),'Invalid paint mark')
     local p={owner=unesc(w[2]),component=unesc(w[3]),bone=unesc(w[4]),seed=num(w[5]),radius=num(w[6]),stretch=num(w[7]),volume=num(w[8]),wet=num(w[9]),drip=num(w[10]),pool=num(w[11])}
     p.at=P.v(num(w[12]),num(w[13]),num(w[14]));p.normal=P.v(num(w[15]),num(w[16]),num(w[17]));p.gravity=P.v(num(w[18]),num(w[19]),num(w[20]));p.color=P.color({num(w[21]),num(w[22]),num(w[23])})
+    if w[24] and w[24]~=''then p.angle=num(w[24]);assert(math.abs(p.angle)<=math.pi+.00001,'Invalid impact angle')end
+    if w[25] and w[25]~=''then
+     p.imprints={}
+     for value in w[25]:gmatch('[^|]+')do
+      local x,y,r,s=value:match('^([^,]+),([^,]+),([^,]+),([^,]+)$');x,y,r,s=num(x),num(y),num(r),num(s)
+      assert(#p.imprints<4 and math.abs(x)<=28 and math.abs(y)<=28 and r>0 and r<1000 and s%1==0 and s>=0 and s<=4294967295,'Invalid paint imprint')
+      p.imprints[#p.imprints+1]={x=x,y=y,radius=r,seed=s}
+     end
+    end
     assert(p.seed%1==0 and p.seed>=0 and p.seed<=4294967295 and p.radius>0 and p.radius<1000 and p.stretch>=1 and p.stretch<=3 and p.volume>=1 and p.drip>=0 and p.drip<=80 and p.pool>=0 and p.pool<1e6,'Invalid paint geometry')
     assert(math.abs(P.dot(p.normal,p.normal)-1)<.01,'Invalid paint normal');marks[#marks+1]=p
    end

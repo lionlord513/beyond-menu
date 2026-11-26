@@ -1,3 +1,9 @@
+# 0.2.1
+
+- Keep paintball gun input from also activating the world object or car under the crosshair.
+- Keep the loaded paintball count visible while using the gun.
+- Vary the impact shapes and make repeated hits produce visible wall drips and growing ground pools.
+
 # 0.2.0
 
 - Spawn a paintball marker and 50-round canisters in the new Fun tab. Choose the fill with the color wheel. Aim at a canister with the marker in hand and press **L** to top up matching paint or swap to a different color.

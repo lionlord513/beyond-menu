@@ -1,6 +1,7 @@
 -- The prompt and its key use the same eligibility check against the real pickup body.
 return function(B,R)
  local I={};local valid=B.valid;local P=R.physics
+ I.capture=dofile(B.root..'/Scripts/paintball/input_capture.lua')(B)
  local mathlib=StaticFindObject('/Script/Engine.Default__KismetMathLibrary')
  local game=StaticFindObject('/Script/Engine.Default__GameplayStatics')
  local function same(a,b)return valid(a)and valid(b)and a:GetAddress()==b:GetAddress()end
@@ -98,7 +99,9 @@ return function(B,R)
   if active and not valid(I.prompt)then addPrompt(hud)end
   if valid(I.prompt)then I.prompt:SetVisibility(active and 3 or 1)end
   local equipped=B.player().ItemEquiped
-  I.updateAmmo(R.record(equipped))
+  local equippedRow=R.record(equipped)
+  I.capture.apply(pc,equippedRow and equippedRow.kind=='gun'and inputReady(pc))
+  I.updateAmmo(equippedRow)
   if I.repeatAt then
    if not same(equipped,I.repeatGun)or not inputReady(pc)or not pc:IsInputKeyDown({KeyName=FName('LeftMouseButton')})then
     I.repeatGun=nil;I.repeatAt=nil
@@ -109,6 +112,7 @@ return function(B,R)
   end
  end
  function I.reset()
+  I.capture.release()
   if valid(I.prompt)then I.prompt:RemoveFromParent()end;I.prompt=nil;I.repeatAt=nil;I.repeatGun=nil;removeAmmo()
  end
  return I

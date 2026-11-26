@@ -40,7 +40,17 @@ class PaintballTests(unittest.TestCase):
    local p=P.impact(P.v(123,456,789),P.v(0,0,1),{.1,.2,.3},1234);p.owner='g:abc';p.component='some%09component';p.bone='None';J.marks={p}
    local encoded=J.encode();local items,marks=J.decode(encoded);assert(#marks==1 and marks[1].component==p.component and marks[1].at.Z==789)
    J.items=items;J.marks=marks;assert(encoded==J.encode())
+   marks[1].angle=-1.5;marks[1].imprints={{x=-6.3,y=11,radius=3.9,seed=4294967295}}
+   local extended=J.encode();local _,reloaded=J.decode(extended);assert(reloaded[1].angle==-1.5 and reloaded[1].imprints[1].seed==4294967295)
    assert(not pcall(J.decode,encoded:gsub('\\t50\\t','\\t51\\t')))
    assert(not pcall(J.decode,'print(123)'))''')
+ def test_overlapping_shots_build_visible_wet_paint(self):
+  self.check('''local floor=P.impact(P.v(0,0,0),P.v(0,0,1),{1,0,0},19)
+   local nearby=P.impact(P.v(9,0,.2),floor.normal,{0,0,1},20)
+   assert(P.depositOffset(floor,nearby));assert(not P.depositOffset(floor,nearby,P.v(4,4,4)))
+   nearby.at.Z=5;assert(not P.depositOffset(floor,nearby));nearby.at.Z=.2;floor.wet=60;assert(not P.depositOffset(floor,nearby))
+   P.accumulate(floor,nearby.color);assert(floor.pool>=floor.radius+4 and floor.drip==0)
+   local wall=P.impact(P.v(0,0,0),P.v(0,1,0),{1,0,0},21)
+   P.accumulate(wall,{0,0,1});assert(wall.drip>=wall.radius+8 and wall.pool==0)''')
 
 if __name__=='__main__':unittest.main(verbosity=2)

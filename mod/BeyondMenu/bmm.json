@@ -1,10 +1,10 @@
 {
   "Id": "beyondmenu",
   "Name": "BeyondMenu",
-  "Version": "0.2.0",
+  "Version": "0.2.1",
   "Channel": "stable",
   "Description": "An F8 game menu with paintball, flight, item and car catalogs, player tools and custom colors.",
-  "Changelog": "Adds the Fun tab with a paintball marker, refill canisters, color selection and persistent paint. Adds flight and Open Computer to the Player tab.",
+  "Changelog": "Fixes accidental vehicle and object interactions with the paintball gun in hand, clarifies the loaded ammo count, and improves splatter variety, wall drips and ground pools.",
   "Dependencies": [
     "UE4SS"
   ],
