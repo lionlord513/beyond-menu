@@ -1,3 +1,7 @@
+# 0.2.4
+
+- Fix a second paintball gun appearing across the screen after switching markers. The previous marker can be picked up again with its remaining paintballs.
+
 # 0.2.3
 
 - Restore the native empty-hand pose after releasing the paintball gun.

@@ -1,10 +1,10 @@
 {
   "Id": "beyondmenu",
   "Name": "BeyondMenu",
-  "Version": "0.2.3",
+  "Version": "0.2.4",
   "Channel": "stable",
   "Description": "An F8 game menu with paintball, flight, item and car catalogs, player tools and custom colors.",
-  "Changelog": "Restore the native empty-hand pose after releasing the paintball gun.",
+  "Changelog": "Fix a second paintball gun appearing across the screen after switching markers.",
   "Dependencies": [
     "UE4SS"
   ],

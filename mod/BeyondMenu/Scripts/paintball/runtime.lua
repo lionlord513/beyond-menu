@@ -11,6 +11,22 @@ return function(B)
  end
  function R.record(a)local id=guid(a);return id and J.items[id],id end
  function R.isGun(a)local row=R.record(a);return row and row.kind=='gun'end
+ function R.releaseStaleMarkers(p,pc)
+  local held={};pc:GetItemInHand(held)
+  local equipped=p.ItemEquiped
+  for _,entry in pairs(R.items)do
+   local a=entry.actor
+   if entry.row.kind=='gun' and valid(a) and not same(a,equipped) and not same(a,held.Item) and not valid(a:GetOwner())then
+    local rootComponent=a.RootComponent
+    if same(rootComponent.AttachParent,p.FpsArm) and rootComponent.AttachSocketName:ToString()=='Hand_RSocket'then
+     -- Native item switches can clear ownership while leaving the old gun
+     -- on the hand socket. Preserve its world transform and original actor.
+     a:K2_DetachFromActor(1,1,1)
+     if not a.StaticMesh:IsSimulatingPhysics(none)then a:DropItem()end
+    end
+   end
+  end
+ end
  local function contents(actor, shell, count, color)
   local parts = {}
   local function add(model, x, y, z, yaw)
@@ -262,6 +278,7 @@ return function(B)
     end
    end
   end
+  R.releaseStaleMarkers(B.player(),B.pc())
   if #A.voices<12 then A.audio()end
  end
  function R.tick(dt)

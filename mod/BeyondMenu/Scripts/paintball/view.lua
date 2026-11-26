@@ -35,6 +35,7 @@ return function(B, R)
  end
  local function equip(p,gun)
   V.reset()
+  R.releaseStaleMarkers(p,B.pc())
   V.arm=p.FpsArm;V.gun=gun;V.original=copy(V.arm:GetRelativeTransform());V.mode=V.arm:GetAnimationMode();V.previousClip=V.mode==1 and V.arm.AnimationData.AnimToPlay or nil
   V.mesh=gun.StaticMesh;V.meshOriginal=copy(V.mesh:GetRelativeTransform())
   V.body={}
