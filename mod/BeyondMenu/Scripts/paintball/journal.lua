@@ -68,7 +68,14 @@ return function(B,P)
  local worldPaint=dofile(B.root..'/Scripts/paintball/world_paint.lua')(snapshot,encodeMark,function(line)
   local _,marks=J.decode('BPAINT1\n'..line..'\n');assert(#marks==1,'Invalid world paint record');return marks[1]
  end)
- function J.persist(mark,removed)worldPaint.change(mark,removed)end
+ function J.persist(mark,removed)
+  local ok,e=pcall(worldPaint.change,mark,removed)
+  if ok then J.paintError=nil;return end
+  -- The ledger retains the pending change in memory for its next checkpoint.
+  -- A failed disk write must not interrupt the projectile or inventory action.
+  local message=tostring(e)
+  if J.paintError~=message then B.status('Paint write failed: '..message)end;J.paintError=message
+ end
  function J.load(save)
   if J.ready or not B.valid(save)then return end
   local key,world=J.key(save);if not key then return end
@@ -81,11 +88,11 @@ return function(B,P)
  function J.capture(save)
   if not J.ready or not B.valid(save)or not save:IsA(StaticFindObject('/Script/DriveBeyondHorizons.DBHSaveGame'))then return end
   local key,world=J.key(save);if not key or world~=J.world then return end
-  worldPaint.checkpoint();snapshot.commit(path(key),key,J.encode())
+  worldPaint.checkpoint();snapshot.commit(path(key),key,J.encode());J.paintError=nil;J.error=nil
  end
  J.hook={RegisterHook('/Script/DriveBeyondHorizons.DBHHelper:SaveGameToSlotAsyncReal',function(_,save)
   local ok,e=pcall(J.capture,save:get());if not ok then J.error=tostring(e);B.status('Paint save failed: '..J.error)end
  end)}
- function J.reset()if J.ready then worldPaint.close()end;J.items={};J.marks={};J.world=nil;J.ready=false;J.error=nil end
+ function J.reset()if J.ready then worldPaint.close()end;J.items={};J.marks={};J.world=nil;J.ready=false;J.error=nil;J.paintError=nil end
  return J
 end
