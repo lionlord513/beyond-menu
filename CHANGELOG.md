@@ -1,7 +1,7 @@
 # 0.2.2
 
 - Preserve paintball splashes, wall drips and ground pools across saves and game restarts. Loading an older slot in the same world keeps its paint and cleanup history.
-- Tap middle mouse to put away the equipped paintball gun, or hold it and drag to rotate.
+- Tap middle mouse to unequip the gun and release it for pickup if it stays attached. Hold and drag to rotate.
 - Scrub paint with the native polishing brush to remove it. Cleanup persists immediately, including when you load an earlier save from the same world.
 
 # 0.2.1

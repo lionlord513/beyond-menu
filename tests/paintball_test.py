@@ -88,18 +88,18 @@ class PaintballTests(unittest.TestCase):
   self.check('''local now=0
    FName=function(s)return s end
    StaticFindObject=function()return{GetRealTimeSeconds=function()return now end}end
-   local gun={GetAddress=function()return 11 end};local other={GetAddress=function()return 12 end}
+   local gun={GetAddress=function()return 11 end,DropItem=function(g)g.simulating=true end};local other={GetAddress=function()return 12 end}
    local B={root=ROOT,valid=function(v)return v~=nil end,host=function()return true end,ui={},H={IsPauseMenu=function()return false end}}
    local R={isGun=function(v)return v==gun end}
    local I=dofile(ROOT..'/Scripts/paintball/interaction.lua')(B,R)
    local p={ItemEquiped=gun,drops=0,RemoveEquipedItem=function(p)p.drops=p.drops+1;p.ItemEquiped=nil end}
-   local pc={HUD={ChatUI={}},WasInputKeyJustPressed=function(pc)return pc.press end,
+   local pc={HUD={ChatUI={}},hand=gun,GetItemInHand=function(pc,out)out.Item=pc.hand end,RemoveItemInHand=function(pc)pc.hand=nil end,WasInputKeyJustPressed=function(pc)return pc.press end,
     WasInputKeyJustReleased=function(pc)return pc.release end,IsInputKeyDown=function(pc)return pc.down end,
     GetInputAnalogKeyState=function(pc,key)return key.KeyName=='MouseX'and pc.dx or 0 end}
    local function frame(t,press,down,release,dx)
     now=t;pc.press=press;pc.down=down;pc.release=release;pc.dx=dx or 0;I.middleFrame(p,pc)
    end
-   frame(0,true,false,true);assert(p.drops==1,'same-frame tap missed')
+   frame(0,true,false,true);assert(p.drops==1 and gun.simulating and pc.hand==nil,'same-frame tap missed')
    p.ItemEquiped=gun;frame(1,true,true,false);frame(1.045,false,false,true);assert(p.drops==2)
    p.ItemEquiped=gun;frame(2,true,true,false);frame(2.26,false,false,true);assert(p.drops==2,'long hold unequipped')
    frame(3,true,true,false);frame(3.02,false,true,false,2.5);frame(3.04,false,false,true,-2);assert(p.drops==2,'drag unequipped')

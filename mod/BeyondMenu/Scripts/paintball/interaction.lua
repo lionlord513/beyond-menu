@@ -86,6 +86,11 @@ return function(B,R)
   elseif released then
    I.middle=nil
    p:RemoveEquipedItem()
+   local hand={};pc:GetItemInHand(hand)
+   if same(hand.Item,press.gun)then
+    pc:RemoveItemInHand()
+    if valid(press.gun)then press.gun:DropItem()end
+   end
   elseif not pc:IsInputKeyDown(middle)then I.middle=nil end
  end
  local function addPrompt(hud)
