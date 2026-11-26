@@ -61,7 +61,10 @@ return function(B,R)
   if not B.ready()then return end
   local pc=B.pc();if not inputReady(pc)then return end
   local gun=B.player().ItemEquiped;local row=R.record(gun)
-  if row and row.kind=='gun'and row.count>0 then R.fire(gun,row,pc);I.updateAmmo(row)end
+  if row and row.kind=='gun'and row.count>0 then
+   R.fire(gun,row,pc);I.updateAmmo(row)
+   I.repeatGun=gun;I.repeatAt=R.clock+.16
+  end
  end
  local function addPrompt(hud)
   local parent=hud.ActionBox:GetParent();if not valid(parent)then return end
@@ -94,10 +97,19 @@ return function(B,R)
   local active=loadTarget()
   if active and not valid(I.prompt)then addPrompt(hud)end
   if valid(I.prompt)then I.prompt:SetVisibility(active and 3 or 1)end
-  I.updateAmmo(R.record(B.player().ItemEquiped))
+  local equipped=B.player().ItemEquiped
+  I.updateAmmo(R.record(equipped))
+  if I.repeatAt then
+   if not same(equipped,I.repeatGun)or not inputReady(pc)or not pc:IsInputKeyDown({KeyName=FName('LeftMouseButton')})then
+    I.repeatGun=nil;I.repeatAt=nil
+   elseif R.clock>=I.repeatAt then
+    local row=R.record(equipped);I.repeatAt=R.clock+.13
+    if row and row.count>0 then R.fire(equipped,row,pc);I.updateAmmo(row)end
+   end
+  end
  end
  function I.reset()
-  if valid(I.prompt)then I.prompt:RemoveFromParent()end;I.prompt=nil;removeAmmo()
+  if valid(I.prompt)then I.prompt:RemoveFromParent()end;I.prompt=nil;I.repeatAt=nil;I.repeatGun=nil;removeAmmo()
  end
  return I
 end
