@@ -58,7 +58,7 @@ RegisterKeyBind(Key.ESCAPE,function()
 end)
 RegisterKeyBind(Key.LEFT_MOUSE_BUTTON,function()if B.ui.opened then B.enqueue(B.ui.click)end end)
 RegisterLoadMapPreHook(function()B.travelling=true;B.reset()end)
-RegisterLoadMapPostHook(function()B.queue={};B.travelling=false end)
+RegisterLoadMapPostHook(function()B.H.reset();B.queue={};B.travelling=false end)
 local tick=0;local errors={};local lastTime
 B.timer=LoopInGameThreadWithDelay(50,function()
  if B.travelling or not B.active then return end

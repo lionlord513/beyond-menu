@@ -28,7 +28,7 @@ function P.advance(ball,dt,trace)
   local decay=math.exp(-P.drag*speed*h)
   local nextv=P.v(v.X*decay,v.Y*decay,v.Z*decay-P.gravity*h)
   local nextp=P.add(ball.at,P.add(v,nextv),h*.5)
-  local hit=trace(ball.at,nextp,P.radius)
+  local hit=trace and trace(ball.at,nextp,P.radius)
   if hit then ball.at=hit.at;ball.age=ball.age+h;return hit end
   ball.at=nextp;ball.velocity=nextv;ball.age=ball.age+h;dt=dt-h
  end

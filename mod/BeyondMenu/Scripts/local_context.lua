@@ -2,9 +2,12 @@
 -- Select the actual local controller, retaining the human while driving.
 return function(valid)
  local H={}
+ local controller
+ function H.reset() controller=nil end
  function H.GetPlayerController()
+  if valid(controller) then return controller end
   for _,pc in ipairs(FindAllOf('PlayerControllerBase_C')or{})do
-   if valid(pc)and pc:IsLocalPlayerController()then return pc end
+   if valid(pc)and pc:IsLocalPlayerController()then controller=pc;return pc end
   end
  end
  function H.GetPlayer()

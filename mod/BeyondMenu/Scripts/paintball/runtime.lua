@@ -82,7 +82,7 @@ return function(B)
   entry.parts=parts
  end
  function R.trace(from,to,radius,ignored,complex)
-  local hit={};if sys:SphereTraceSingle(B.player(),from,to,radius,0,complex~=false,ignored or{},0,hit,true,transparent,transparent,0)then
+  local hit={};if sys:SphereTraceSingle(R.pawn or B.player(),from,to,radius,0,complex~=false,ignored or{},0,hit,true,transparent,transparent,0)then
    local c=hit.Component;if c then local ok,v=pcall(function()return c:get()end);if ok then c=v end end
    return {at=P.v(hit.ImpactPoint.X,hit.ImpactPoint.Y,hit.ImpactPoint.Z),normal=P.v(hit.ImpactNormal.X,hit.ImpactNormal.Y,hit.ImpactNormal.Z),component=c,bone=hit.BoneName and hit.BoneName:ToString()or'None'}
   end
@@ -111,79 +111,76 @@ return function(B)
   -- Only nearby deposits on the same surface can feed a drip/pool.
   for i=#J.marks,math.max(1,#J.marks-2048),-1 do local old=J.marks[i]
    if old.owner==owner and old.component==component and old.bone==mark.bone and P.distance(old.at,mark.at)<36 and P.dot(old.normal,mark.normal)>.94 and old.wet<25 then
-    P.accumulate(old,mark.color);local r=R.rendered[old];if r then r.dirty=true end;return old
+    P.accumulate(old,mark.color);old.seenAt=R.clock;R.fresh=old;local r=R.rendered[old];if r then r.dirty=true end;return old
    end
   end
-  J.marks[#J.marks+1]=mark;return mark
+  mark.seenAt=R.clock;J.marks[#J.marks+1]=mark;R.fresh=mark;return mark
  end
  function R.resolve(p)
   if p.owner==''then return nil end
   local c=R.targets[p.owner..'|'..p.component];if valid(c)then return c end
  end
  function R.worldPoint(p)local c=R.resolve(p);return valid(c)and mathlib:TransformLocation(transform(c,p.bone),p.at)or p.owner==''and p.at or nil end
- function R.draw(p)
-  local target=R.resolve(p);if p.owner~=''and not valid(target)then return end
-  local r=R.rendered[p]
-  if not r or not valid(r.visual)then
-   local actor=B.pc();local c=A.component(actor,StaticFindObject('/Script/ProceduralMeshComponent.ProceduralMeshComponent'));c:SetCollisionEnabled(0);c:SetCastShadow(false)
-   if valid(target)then c:K2_AttachToComponent(target,FName(p.bone~=''and p.bone or'None'),0,0,0,false)end
-   c:K2_SetRelativeTransform(A.identity,false,{},true);r={visual=c,owner=actor,dirty=true};R.rendered[p]=r
-  end
-  if r.dirty or(p.drip>0 and p.wet<24 and R.clock>(r.nextDraw or 0))then
-   local geo=P.geometry(p,p.wet);r.nextDraw=R.clock+.25;r.dirty=false
-   -- Project the mesh back to the struck surface. Drop triangles crossing an
-   -- edge instead of painting floating sheets across empty space.
-   local tr=valid(target)and transform(target,p.bone)or nil;local keep={}
-   for i,pos in ipairs(geo.vertices)do
-    local world=tr and mathlib:TransformLocation(tr,pos)or pos;local normal=tr and mathlib:TransformDirection(tr,p.normal)or p.normal
-    local h=R.trace(P.add(world,normal,2),P.add(world,normal,-3),.02,{B.player()})
-    if h and(not valid(target)or same(h.component,target))then
-     local v=P.add(h.at,h.normal,.055);geo.vertices[i]=tr and mathlib:InverseTransformLocation(tr,v)or v;keep[i-1]=true
-    end
-   end
-   local tris={};for i=1,#geo.triangles,3 do local a,b,c=geo.triangles[i],geo.triangles[i+1],geo.triangles[i+2];if keep[a]and keep[b]and keep[c]then tris[#tris+1]=a;tris[#tris+1]=b;tris[#tris+1]=c end end
-   r.triangles=#tris/3;r.visual:CreateMeshSection(0,geo.vertices,tris,geo.normals,geo.uv,{},{},false);r.visual:SetMaterial(0,A.material(p.color))
-  end
- end
- function R.fire(gun,row,pc)
-  if row.count<=0 or #R.balls>=64 then return end
-  local camera=pc.PlayerCameraManager
-  local eye=camera:GetCameraLocation();local rotation=camera:GetCameraRotation()
-  local forward=mathlib:GetForwardVector(rotation);local right=mathlib:GetRightVector(rotation)
-  local muzzle=mathlib:TransformLocation(gun.StaticMesh:K2_GetComponentToWorld(),P.v(45.54,0,8.5))
-  local ignored={B.player(),gun};local sightEnd=P.add(eye,forward,20000)
-  local sight=R.trace(eye,sightEnd,.05,ignored)
-  local aim=P.add(sight and sight.at or sightEnd,muzzle,-1)
-  local direction=P.dot(aim,forward)>0 and P.unit(aim)or forward
-  R.seed=(R.seed+7919)&0xffffffff;local rng=P.random(R.seed)
-  direction=P.unit(P.add(P.add(direction,right,(rng()-.5)*.008),P.v(0,0,1),(rng()-.5)*.008))
-  local ball=P.launch(muzzle,direction,row.color,R.seed);ball.ignored=ignored
-  local obstruction=R.trace(eye,muzzle,P.radius,ignored)
-  if obstruction then R.impact(ball,obstruction)
-  else
-   ball.visual=A.visual(pc,'ball');ball.visual:SetMaterial(0,A.material(row.color))
-   ball.visual:K2_SetWorldLocation(muzzle,false,{},true);R.balls[#R.balls+1]=ball
-  end
-  row.count=row.count-1;A.shot(muzzle)
- end
+ R.draw=dofile(root..'splats.lua')(B,R)
+ R.projectiles=dofile(root..'projectile.lua')(B,R)
  function R.scan()
   if not J.ready then J.load(game:GetGameInstance(B.pc()).MainSaveGame)end
   if not J.ready then return end
   if not R.frameHook then R.frameHook={RegisterHook('/Game/BP/Player/PlayerBase.PlayerBase_C:ReceiveTick',function(ctx,dt)
-   if same(ctx:get(),B.player())then local ok,e=pcall(R.view.frame,dt:get());if not ok and R.viewError~=tostring(e)then R.viewError=tostring(e);B.log('Paintball view: '..tostring(e))end end
+   if same(ctx:get(),B.player())then local frameDt=dt:get();if #R.balls>0 then R.projectiles.frame(frameDt)end;local ok,e=pcall(R.view.frame,frameDt);if not ok and R.viewError~=tostring(e)then R.viewError=tostring(e);B.log('Paintball view: '..tostring(e))end end
   end)}end
-  for _,kind in ipairs({'BumpGun_C','Binocular_C'})do for _,a in ipairs(FindAllOf(kind)or{})do if valid(a)and same(a:GetWorld(),B.player():GetWorld())then local row=R.record(a);if row then R.appearance(a,row)end end end end
+  for id,entry in pairs(R.items)do if not valid(entry.actor)then R.items[id]=nil end end
+  if R.clock >= (R.nextItemLookup or 0) then
+   local missing={}
+   for id,row in pairs(J.items)do if not R.items[id]then missing[row.kind]=true end end
+   local world=B.player():GetWorld()
+   for kind in pairs(missing)do
+    for _,a in ipairs(FindAllOf(kind=='gun'and'BumpGun_C'or'Binocular_C')or{})do
+     if valid(a)and same(a:GetWorld(),world)then
+      local row,id=R.record(a);if row and not R.items[id]then R.appearance(a,row)end
+     end
+    end
+   end
+   R.nextItemLookup=R.clock+3
+  end
   -- Resolve persistent moving-object identities without using transient addresses.
-  local wanted={};for _,p in ipairs(J.marks)do if p.owner~=''and not valid(R.resolve(p))then wanted[p.owner]=true end end
-  if next(wanted)then for _,a in ipairs(FindAllOf('Actor')or{})do if valid(a)then
-   local id=guid(a);local key=id and'g:'..id or'p:'..a:GetFullName()
-   if wanted[key]then for _,e in ipairs(a:K2_GetComponentsByClass(StaticFindObject('/Script/Engine.PrimitiveComponent')))do local c=e:get();R.targets[key..'|'..c:GetFName():ToString()]=c end end
-  end end end
-  for id,r in pairs(R.items)do if not valid(r.actor)then R.items[id]=nil end end
+  -- Resolve unloaded targets in batches. Never enumerate the world's actors
+  -- every second just because one painted object is beyond streaming range.
+  if R.clock >= (R.resolveAt or 0) and #J.marks>0 then
+   R.resolveAt=R.clock+3
+   local wanted={}
+   for i=1,math.min(128,#J.marks) do
+    R.resolveIndex=((R.resolveIndex or 0)%#J.marks)+1
+    local mark=J.marks[R.resolveIndex]
+    if mark.owner~='' and not valid(R.resolve(mark)) then wanted[mark.owner]=true end
+   end
+   local function remember(key,actor)
+    if not valid(actor)then return end
+    for _,entry in ipairs(actor:K2_GetComponentsByClass(StaticFindObject('/Script/Engine.PrimitiveComponent')))do
+     local component=entry:get()
+     R.targets[key..'|'..component:GetFName():ToString()]=component
+    end
+   end
+   local needsGuid=false
+   for key in pairs(wanted)do
+    if key:sub(1,2)=='p:' then
+     local path=key:match('^p:%S+ (.+)$')
+     if path then remember(key,StaticFindObject(path))end
+    else needsGuid=true end
+   end
+   if needsGuid then
+    for _,cls in ipairs({'ItemBaseMaster_C','Pawn'})do
+     for _,actor in ipairs(FindAllOf(cls)or{})do
+      local id=guid(actor);if id and wanted['g:'..id]then remember('g:'..id,actor)end
+     end
+    end
+   end
+  end
   if #A.voices<12 then A.audio()end
  end
  function R.tick(dt)
   if not B.ready()or not B.host()then return end
+  R.pawn=B.player()
   dt=math.min(dt or .05,.1);R.clock=R.clock+dt
   if R.clock>=R.scanAt then R.scanAt=R.clock+1;R.scan()end
   if not J.ready then return end
@@ -192,24 +189,34 @@ return function(B)
   if row and row.kind=='gun'then
    gun.NbBullet=0;gun.NbBulletMax=0;gun.IsAttacking=1000
   end
-  for i=#R.balls,1,-1 do local b=R.balls[i];local hit=P.advance(b,dt,function(a,z,r)return R.trace(a,z,r,b.ignored)end)
-   if hit~=nil then if hit then R.impact(b,hit)end;if valid(b.visual)then b.visual:K2_DestroyComponent(pc)end;table.remove(R.balls,i)
-   elseif valid(b.visual)then b.visual:K2_SetWorldLocation(b.at,false,{},true)end
+  local pos=p:K2_GetActorLocation()
+  local builds=0
+  local function visit(mark)
+   mark.wet=math.min(30,mark.wet+math.max(0,R.clock-(mark.seenAt or (R.clock-dt))))
+   mark.seenAt=R.clock
+   local at=R.worldPoint(mark)
+   local r=R.rendered[mark]
+   if at and P.distance(at,pos)<8000^2 then
+    if builds<2 and (not r or r.dirty or (mark.drip>0 and mark.wet<24 and R.clock>(r.nextDraw or 0))) then
+     R.draw(mark);builds=builds+1
+    end
+   elseif r then
+    if valid(r.visual)then r.visual:K2_DestroyComponent(r.owner)end
+    R.rendered[mark]=nil
+   end
   end
-  local pos=p:K2_GetActorLocation();local builds=0
-  for index=#J.marks,1,-1 do
-   local mark=J.marks[index];mark.wet=math.min(30,mark.wet+dt)
-   local at=R.worldPoint(mark);local near=at and P.distance(at,pos)<8000^2
-   if near then if builds<2 then local r=R.rendered[mark];if not r or r.dirty or(mark.drip>0 and mark.wet<24 and R.clock>(r.nextDraw or 0))then R.draw(mark);builds=builds+1 end end
-   else local r=R.rendered[mark];if r and valid(r.visual)then r.visual:K2_DestroyComponent(r.owner)end;R.rendered[mark]=nil end
+  if R.fresh then visit(R.fresh);R.fresh=nil end
+  for i=1,math.min(#J.marks,24)do
+   R.paintIndex=((R.paintIndex or 0)%#J.marks)+1;visit(J.marks[R.paintIndex])
   end
  end
  function R.reset()
   R.view.reset();R.interaction.reset()
-  for _,b in ipairs(R.balls)do if valid(b.visual)then b.visual:K2_DestroyComponent(B.pc())end end
+  R.fresh=nil;R.pawn=nil;R.resolveAt=nil;R.resolveIndex=nil;R.paintIndex=nil;R.nextItemLookup=nil
+
   for _,r in pairs(R.rendered)do if valid(r.owner)and valid(r.visual)then r.visual:K2_DestroyComponent(r.owner)end end
   for _,r in pairs(R.items)do if valid(r.actor)then clearContents(r)end end
-  A.reset();J.reset();R.balls={};R.items={};R.rendered={};R.targets={};R.clock=0;R.scanAt=0
+  R.projectiles.reset();A.reset();J.reset();R.balls={};R.items={};R.rendered={};R.targets={};R.clock=0;R.scanAt=0
  end
  R.interaction=dofile(root..'interaction.lua')(B,R)
  RegisterKeyBind(Key.L,function()B.enqueue(function()R.interaction.loadPressed()end)end)
