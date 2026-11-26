@@ -1,3 +1,7 @@
+# 0.2.5
+
+- Add short category titles to the menu, including Unlimited supplies and Paintball.
+
 # 0.2.4
 
 - Fix a second paintball gun appearing across the screen after switching markers. The previous marker can be picked up again with its remaining paintballs.

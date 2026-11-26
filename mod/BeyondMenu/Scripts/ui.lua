@@ -46,6 +46,9 @@ return function(B)
   if on then text('✓',x+4,y-2,20,24,16,contrast(S.border),true,true)end
   text(label,x+34,y-1,w-34,26,14,nil,nil,true);hit(x,y,w,28,fn)
  end
+ local function category(title,x,y,width)
+  text(title,x,y,width,22,13,'text',true,true)
+ end
  local function section(title,x,y,sub)
   text(title,x,y,720,34,26,'text',true);if sub then text(sub,x,y+41,760,26,13,'muted')end
  end
@@ -65,15 +68,15 @@ return function(B)
  local function player()
   section('Player',218,104,'Health, abilities and money.')
   button('Scoreboard',874,108,166,38,function()U.navigate('scoreboard')end,false,true)
-  text('HEALTH & NEEDS',218,197,500,22,11,'muted',true)
+  category('Health & needs',218,197,500)
   local rows={{'Full heal',function()return B.actions.refill()end},{'Refill health',function()return B.actions.refill(1)end},{'Refill hunger',function()return B.actions.refill(2)end},{'Refill thirst',function()return B.actions.refill(3)end},{'Empty bladder',B.actions.empty}}
   for i,r in ipairs(rows)do button(r[1],218+((i-1)%3)*279,234+math.floor((i-1)/3)*60,261,48,function()execute(r[2])end)end
-  text('ABILITIES',218,371,500,22,11,'muted',true)
+  category('Abilities',218,371,500)
   toggle('Super speed','speed',218,408,261);toggle('Super jump','jump',497,408,261);toggle('No hunger or thirst','needs',776,408,261)
   button(B.toggles.flight and'Flight / noclip: On'or'Flight / noclip: Off',218,472,261,46,function()execute(B.flight.toggle)end,B.toggles.flight)
   button('Open Computer',497,472,261,46,function()execute(B.actions.computer,false)end)
   text('Hold Shift to fly faster',776,488,261,24,12,'muted')
-  text('MONEY',218,540,500,22,11,'muted',true)
+  category('Money',218,540,500)
   field('money',U.money or'5000',218,574,240,46)
   for i,r in ipairs({{'Add','add'},{'Remove','remove'},{'Set balance','set'}})do button(r[1],480+(i-1)*188,574,172,46,function()U.money=value('money','5000');execute(function()return B.actions.money(r[2],U.money)end)end)end
   if not B.host()then text('Player stats and world changes are controlled by the host.',218,637,800,24,12,'muted')end
@@ -81,15 +84,16 @@ return function(B)
  local function items()
   section('Items',218,104,'Spawn items and refill supplies.')
   box(218,198,820,134,'panel',22,'line',1)
-  text('Native item catalog',244,220,650,32,22,'text',true);text('Every available item, with search and native icons.',244,263,610,25,13,'muted')
+  category('Item catalog',244,253,540);text('Every available item, with search and native icons.',244,263,610,25,13,'muted')
   button('Open catalog',820,242,190,48,function()U.navigate('items')end,true)
-  text('UNLIMITED SUPPLIES',218,370,550,22,11,'muted',true)
+  category('Unlimited supplies',218,370,550)
   toggle('Brush & sponge','brush',218,407,261);toggle('Spraypaint','paint',497,407,261);toggle('Ammo','ammo',776,407,261)
-  text('CUSTOM PAINT',218,506,550,22,11,'muted',true)
+  category('Custom paint',218,506,550)
   button('Spraypaint maker',218,544,290,50,function()U.navigate('paint')end)
   text('Pick a color. Choose metallic or matte.',533,559,500,26,13,'muted')
  end
  local function fun()
+  category('Paintball',218,84,432)
   U.paintballColor=U.paintballColor or{1,.12,.025}
   button('Spawn paintball gun',218,112,190,36,function()execute(function()return B.paintball.spawn('gun',U.paintballColor)end)end,false,true)
   button('Spawn 50 paintballs',462,112,190,36,function()execute(function()return B.paintball.spawn('pod',U.paintballColor)end)end,false,true)
@@ -100,20 +104,21 @@ return function(B)
  end
  local function world()
   section('World',218,104,'Set the time and weather for this session.')
-  text('TIME OF DAY',218,199,550,22,11,'muted',true)
+  category('Time of day',218,199,550)
   for i,r in ipairs({{'Dawn',600},{'Noon',1200},{'Dusk',1800},{'Midnight',0}})do button(r[1],218+(i-1)*210,236,192,48,function()execute(function()return B.actions.time(r[2])end)end)end
-  text('WEATHER',218,336,550,22,11,'muted',true)
+  category('Weather',218,336,550)
   local weather={{'Clear',0},{'Cloudy',1},{'Fog',2},{'Overcast',3},{'Partly cloudy',4},{'Dust',5},{'Rain',6},{'Light rain',7},{'Storm',8},{'Calm dust',9},{'Sandstorm',10},{'Snow',11},{'Blizzard',12},{'Light snow',13}}
   for i,r in ipairs(weather)do button(r[1],218+((i-1)%4)*210,374+math.floor((i-1)/4)*58,192,46,function()execute(function()return B.actions.weather(r[2])end)end,false,true)end
  end
  local function settings()
   section('Settings',218,104,'Menu colors and transparency.')
-  text('BACKGROUND',218,201,500,22,11,'muted',true)
+  category('Background',218,201,500)
   button('Transparent',218,238,220,48,function()S.transparent=true;S.save();U.render()end,S.transparent)
   button('Solid color',454,238,220,48,function()S.transparent=false;S.save();U.render()end,not S.transparent)
-  text('Opacity',218,319,160,25,14,'muted');text(math.floor(S.opacity*100)..'%',846,319,85,25,14)
+  category('Opacity',218,319,160);text(math.floor(S.opacity*100)..'%',846,319,85,25,14)
   button('−',938,307,46,42,function()S.opacity=math.max(.25,S.opacity-.05);S.save();U.render()end)
   button('+',994,307,46,42,function()S.opacity=math.min(.98,S.opacity+.05);S.save();U.render()end)
+  category('Menu colors',218,355,500)
   for i,r in ipairs({{'Border color','border'},{'Background color','background'},{'Button color','button'}})do
    local y=387+(i-1)*64;box(218,y,38,38,S.color(r[2]),13,'line',1);button(r[1],276,y-4,310,46,function()U.colorTarget=r[2];U.colorDraft={table.unpack(S[r[2]])};U.navigate('color')end)
   end
@@ -195,7 +200,7 @@ return function(B)
   if cars then
    B.native.prioritize(U.iconSlots,U.tuned)
    box(804,278,233,310,'panel',20,'line',1)
-   text('PREVIEW',824,298,195,22,10,'muted',true)
+   category('Preview',824,298,195)
    U.previewImage=new('Image');place(U.previewImage,817,337,207,138);U.previewImage:SetVisibility(1)
    U.previewName=text('Hover over a car',824,491,193,52,15,'muted',true)
    U.previewNote=text(U.tuned and'Tuned parts'or'Standard parts',824,554,195,23,11,'muted')

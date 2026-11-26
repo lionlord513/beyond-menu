@@ -1,10 +1,10 @@
 {
   "Id": "beyondmenu",
   "Name": "BeyondMenu",
-  "Version": "0.2.4",
+  "Version": "0.2.5",
   "Channel": "stable",
   "Description": "An F8 game menu with paintball, flight, item and car catalogs, player tools and custom colors.",
-  "Changelog": "Fix a second paintball gun appearing across the screen after switching markers.",
+  "Changelog": "Add short category titles to the menu, including Unlimited supplies and Paintball.",
   "Dependencies": [
     "UE4SS"
   ],
