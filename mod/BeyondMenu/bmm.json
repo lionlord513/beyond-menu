@@ -1,10 +1,10 @@
 {
   "Id": "beyondmenu",
   "Name": "BeyondMenu",
-  "Version": "0.1.1",
+  "Version": "0.2.0",
   "Channel": "stable",
-  "Description": "An independent F8 menu with item and car catalogs, player tools and custom colors.",
-  "Changelog": "Fixes ZIP installation in Beyond Mod Manager and prepares the thumbnail cache on first launch.",
+  "Description": "An F8 game menu with paintball, flight, item and car catalogs, player tools and custom colors.",
+  "Changelog": "Adds the Fun tab with a paintball marker, refill canisters, color selection and persistent paint. Adds flight and Open Computer to the Player tab.",
   "Dependencies": [
     "UE4SS"
   ],

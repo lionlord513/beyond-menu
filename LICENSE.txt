@@ -9,4 +9,12 @@ Game images are rendered from Drive Beyond Horizons. Game assets, Unreal Engine
 and dependencies retain their respective ownership and terms. No game meshes,
 ZodMenu code, personal access controls or other Beyond mods are bundled.
 
+The original marker model, Paintball Gun by Judith Solomon, is licensed under
+Creative Commons Attribution 4.0 International (https://creativecommons.org/licenses/by/4.0/).
+Source: https://sketchfab.com/3d-models/paintball-gun-c9f3b8079102454fb9d3fc628ff0ad8b
+BeyondMenu converted and reoriented the model, rebound its textures and fitted
+new collision geometry. The model and these adaptations are distributed under
+CC BY 4.0. The firing and impact recordings credited in README.md are CC0.
+The personal gameplay license above applies only to original BeyondMenu content.
+
 The mod is provided as-is, without warranty.

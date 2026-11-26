@@ -1,6 +1,6 @@
 -- BeyondMenu has its own state, input bindings and UI. No companion mod required.
 local root=debug.getinfo(1,'S').source:sub(2):gsub('\\','/'):match('^(.*)/Scripts/[^/]+$')
-local B={version='0.1.1',root=assert(root),queue={},toggles={},restore={},message='Ready',active=true}
+local B={version='0.2.0',root=assert(root),queue={},toggles={},restore={},message='Ready',active=true}
 function B.valid(o) return o and o:IsValid() end
 function B.log(s) print('[BeyondMenu] '..tostring(s)..'\n') end
 function B.status(s) B.message=tostring(s):gsub('^.-:%d+: ',''):match('[^\r\n]+'):sub(1,180);B.log(s);if B.ui then B.ui.status() end end
@@ -40,21 +40,32 @@ B.actions=dofile(root..'/Scripts/actions.lua')(B)
 B.catalog=dofile(root..'/Scripts/catalog.lua')(B)
 B.players=dofile(root..'/Scripts/players.lua')(B)
 B.optional=dofile(root..'/Scripts/optional.lua')(B)
+B.flight=dofile(root..'/Scripts/flight.lua')(B)
+B.paintball=dofile(root..'/Scripts/paintball/runtime.lua')(B)
 B.ui=dofile(root..'/Scripts/ui.lua')(B)
 function B.reset()
- B.queue={};B.ui.close();B.restoreKey();B.toggles={};B.catalog.reset();B.players.reset();B.actions.reset();B.optional.reset()
+ B.queue={};B.ui.close();B.flight.stop();B.paintball.reset();B.restoreKey();B.toggles={};B.catalog.reset();B.players.reset();B.actions.reset();B.optional.reset()
 end
 RegisterKeyBind(Key.F8,function()B.enqueue(function()if B.native.mouse()then B.ui.toggle()end end)end)
-RegisterKeyBind(Key.ESCAPE,function()if B.ui.opened then B.enqueue(function()if B.native.mouse()then B.ui.back()end end)end end)
+function B.escape()
+ if B.actions.computerSession.active() then B.actions.computerSession.close()
+ elseif B.ui.opened then B.ui.back() end
+end
+RegisterKeyBind(Key.ESCAPE,function()
+ if B.ui.opened or B.actions.computerSession.active() then
+  B.enqueue(function() if B.native.mouse() then B.escape() end end)
+ end
+end)
 RegisterKeyBind(Key.LEFT_MOUSE_BUTTON,function()if B.ui.opened then B.enqueue(B.ui.click)end end)
 RegisterLoadMapPreHook(function()B.travelling=true;B.reset()end)
 RegisterLoadMapPostHook(function()B.queue={};B.travelling=false end)
-local tick=0;local errors={}
+local tick=0;local errors={};local lastTime
 B.timer=LoopInGameThreadWithDelay(50,function()
  if B.travelling or not B.active then return end
  local ok,e=xpcall(function()
   local q=B.queue;B.queue={};for _,fn in ipairs(q)do B.run(fn)end
-  B.native.tick();B.ui.tick();if B.ready()then B.catalog.warm()end;tick=tick+1
+  local dt=.05;if B.ready()then local now=StaticFindObject('/Script/Engine.Default__GameplayStatics'):GetTimeSeconds(B.player());dt=lastTime and math.max(0,math.min(.1,now-lastTime))or .05;lastTime=now else lastTime=nil end
+  B.native.tick();B.actions.computerSession.tick();B.ui.tick();B.flight.tick(dt);B.paintball.tick(dt);if B.ready()then B.catalog.warm()end;tick=tick+1
   if tick%10==0 and B.ready()then B.actions.tick();B.optional.tick();B.catalog.tick()end
  end,debug.traceback)
  if not ok and not errors[tostring(e)]then errors[tostring(e)]=true;B.status(e)end

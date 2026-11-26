@@ -1,0 +1,15 @@
+Paintball Gun by Judith Solomon
+https://sketchfab.com/3d-models/paintball-gun-c9f3b8079102454fb9d3fc628ff0ad8b
+Licensed under Creative Commons Attribution 4.0 International.
+https://creativecommons.org/licenses/by/4.0/
+BeyondMenu converted and reoriented the mesh, rebound its textures and fitted new collision geometry.
+
+paintball_shoot1.wav by fabianofa
+https://freesound.org/people/fabianofa/sounds/98189/
+
+Paintball, tirs et impacts bois by Joseph SARDIN (BigSoundBank)
+https://bigsoundbank.com/paintball-tirs-impacts-bois-s0529.html
+BeyondMenu uses short excerpts from this recording.
+
+Both audio recordings are CC0.
+https://creativecommons.org/publicdomain/zero/1.0/

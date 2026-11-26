@@ -4,6 +4,8 @@ An independent menu for Drive Beyond Horizons. Press **F8** in a loaded game to 
 
 ## Features
 
+- A compact **Fun** tab with a paintball gun, reusable canisters and a color wheel.
+- **Flight / noclip** and **Open Computer** in the Player tab.
 - Player health, hunger, thirst, empty bladder, money, super speed and super jump.
 - A scoreboard with names and ping. The host can teleport to a player, bring a player over, or restore their health, hunger and thirst.
 - A searchable item catalog using the installed game's item data and native icons, with extra thumbnails for parts missing native icons.
@@ -41,6 +43,12 @@ Beyond Mod Manager can use the included update metadata. No manager is required:
 
 ## Use
 
+In a solo or host game, open **Fun**, choose a color on the wheel, and press **Spawn 50 paintballs**. The selected color appears in the clear canister. Spawn the gun, pick it up, aim at the canister within reach, and press **L** at **Load paintballs**. Matching paint tops up the gun to 50 rounds and leaves excess paintballs in the canister. A different color swaps the two loads, returning any previous rounds to the canister. Empty canisters stay in the world and have no loading prompt. Equip the gun and use the primary mouse button to fire. Rotate loose items with the game's middle-mouse control.
+
+Repeated hits near fresh paint can produce drips or pools. BeyondMenu saves the paint, canister contents and gun loads in `BeyondMenu/state/`, keyed to the game's save revisions. Include this folder when moving or backing up a painted world. A painted object needs to be loaded for its paint to be visible.
+
+In **Player**, switch on **Flight / noclip** to fly with WASD. Space ascends, left Ctrl descends and either Shift key increases speed. Switch flight off to restore collision. **Open Computer** opens the native desktop. Press Escape to close it and return to the game.
+
 Click an item or car to spawn it. Stand on foot with clear space nearby. **Tuned parts** uses the game's available tuning kit; vehicles without a tuning kit keep their standard parts. Catalog entries come from the installed game, and current vehicle preview images were captured from build `26437602`. Paint changes the parts that the vehicle supports painting; glass, tires and unpaintable trim retain their materials. Optional vehicles finish assembling before their paint is applied.
 
 Player stat changes, world controls, optional item spawning and scoreboard actions require the host. Guests can browse, use their own wallet and movement tools, request native items, and use the native garage delivery route for cars. Guest vehicle deliveries can take a while; do not send duplicate requests.
@@ -52,3 +60,7 @@ Run `Uninstall.ps1` to disable BeyondMenu and remove its optional provider loade
 ## Credits
 
 By lionlord513 / Beyond Mods. Built from the author's existing menu functionality and the game's native APIs. No ZodMenu source or packaged assets are included. Drive Beyond Horizons and Unreal Engine assets belong to their respective owners.
+
+The marker uses [Paintball Gun by Judith Solomon](https://sketchfab.com/3d-models/paintball-gun-c9f3b8079102454fb9d3fc628ff0ad8b), licensed under [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). BeyondMenu converts and reorients the mesh, rebinds its textures to in-game materials and fits a new collision shape to it.
+
+The firing recording is [paintball_shoot1.wav by fabianofa](https://freesound.org/people/fabianofa/sounds/98189/). The impact clips are excerpts from [Paintball, tirs et impacts bois by Joseph SARDIN](https://bigsoundbank.com/paintball-tirs-impacts-bois-s0529.html). Both recordings are distributed under [CC0](https://creativecommons.org/publicdomain/zero/1.0/).

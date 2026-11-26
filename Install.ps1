@@ -12,6 +12,7 @@ if (!(Test-Path -LiteralPath "$source\Scripts\main.lua")) { $source = Join-Path 
 if (!(Test-Path -LiteralPath "$source\Scripts\main.lua")) { throw 'Extract the complete BeyondMenu download before installing.' }
 $destination = Join-Path $mods 'BeyondMenu'
 New-Item -ItemType Directory -Force -Path $destination | Out-Null
+New-Item -ItemType Directory -Force -Path (Join-Path $destination 'state') | Out-Null
 foreach ($item in Get-ChildItem -LiteralPath $source) {
  if ($item.Name -in @('state','settings.ini')) { continue }
  Copy-Item -LiteralPath $item.FullName -Destination $destination -Recurse -Force

@@ -14,10 +14,10 @@ return function(B)
  local function box(x,y,w,h,c,r,border,width)
   local o=new('Image');o:SetBrush(brush(c,r or 12,border,width));place(o,x,y,w,h);return o
  end
- local function text(t,x,y,w,h,size,c,bold)
+ local function text(t,x,y,w,h,size,c,bold,control)
   local o=new('TextBlock');o:SetText(FText(t));local f=o.Font;f.Size=math.max(9,math.floor(size*U.scale+.5));f.TypefaceFontName=FName(bold and'Bold'or'Regular');o:SetFont(f)
   local ink=color(c or'text');if c=='border'and math.abs((S.border[1]+S.border[2]+S.border[3])-(S.background[1]+S.background[2]+S.background[3]))<.55 then ink=colors.text end
-  o:SetColorAndOpacity({SpecifiedColor=ink,ColorUseRule=0});o:SetClipping(1);place(o,x,y,w,h);return o
+  o:SetColorAndOpacity({SpecifiedColor=ink,ColorUseRule=0});o:SetClipping(1);place(o,x,y,w,h);if not control then o:SetVisibility(1)end;return o
  end
  local function image(tex,x,y,w,h)
   if not valid(tex)then return end
@@ -28,7 +28,7 @@ return function(B)
  end
  local function button(label,x,y,w,h,fn,active,small)
   local bg=box(x,y,w,h,active and S.color('border',.22)or'button',h/2,active and'border'or'line',1)
-  local compact=w<70;local o=text(label,x+(compact and 0 or 18),y+(h-(small and 18 or 22))/2-2,w-(compact and 0 or 36),28,small and 12 or 15,active and'border'or contrast(S.button),active)
+  local compact=w<70;local o=text(label,x+(compact and 0 or 18),y+(h-(small and 18 or 22))/2-2,w-(compact and 0 or 36),28,small and 12 or 15,active and'border'or contrast(S.button),active,true)
   if compact then o:SetJustification(1)end
   return hit(x,y,w,h,fn,nil,{bg=bg,active=active,r=h/2})
  end
@@ -43,8 +43,8 @@ return function(B)
  local function value(k,fallback)local o=U.fields[k];return valid(o)and o:GetText():ToString()or fallback end
  local function check(label,on,x,y,w,fn)
   box(x,y,22,22,on and'border'or'button',7,on and'border'or'line',1)
-  if on then text('✓',x+4,y-2,20,24,16,contrast(S.border),true)end
-  text(label,x+34,y-1,w-34,26,14);hit(x,y,w,28,fn)
+  if on then text('✓',x+4,y-2,20,24,16,contrast(S.border),true,true)end
+  text(label,x+34,y-1,w-34,26,14,nil,nil,true);hit(x,y,w,28,fn)
  end
  local function section(title,x,y,sub)
   text(title,x,y,720,34,26,'text',true);if sub then text(sub,x,y+41,760,26,13,'muted')end
@@ -70,10 +70,13 @@ return function(B)
   for i,r in ipairs(rows)do button(r[1],218+((i-1)%3)*279,234+math.floor((i-1)/3)*60,261,48,function()execute(r[2])end)end
   text('ABILITIES',218,371,500,22,11,'muted',true)
   toggle('Super speed','speed',218,408,261);toggle('Super jump','jump',497,408,261);toggle('No hunger or thirst','needs',776,408,261)
-  text('MONEY',218,491,500,22,11,'muted',true)
-  field('money',U.money or'5000',218,525,240,46)
-  for i,r in ipairs({{'Add','add'},{'Remove','remove'},{'Set balance','set'}})do button(r[1],480+(i-1)*188,525,172,46,function()U.money=value('money','5000');execute(function()return B.actions.money(r[2],U.money)end)end)end
-  if not B.host()then text('Player stats and world changes are controlled by the host.',218,604,800,26,12,'muted')end
+  button(B.toggles.flight and'Flight / noclip: On'or'Flight / noclip: Off',218,472,261,46,function()execute(B.flight.toggle)end,B.toggles.flight)
+  button('Open Computer',497,472,261,46,function()execute(B.actions.computer,false)end)
+  text('Hold Shift to fly faster',776,488,261,24,12,'muted')
+  text('MONEY',218,540,500,22,11,'muted',true)
+  field('money',U.money or'5000',218,574,240,46)
+  for i,r in ipairs({{'Add','add'},{'Remove','remove'},{'Set balance','set'}})do button(r[1],480+(i-1)*188,574,172,46,function()U.money=value('money','5000');execute(function()return B.actions.money(r[2],U.money)end)end)end
+  if not B.host()then text('Player stats and world changes are controlled by the host.',218,637,800,24,12,'muted')end
  end
  local function items()
   section('Items',218,104,'Spawn items and refill supplies.')
@@ -85,6 +88,15 @@ return function(B)
   text('CUSTOM PAINT',218,506,550,22,11,'muted',true)
   button('Spraypaint maker',218,544,290,50,function()U.navigate('paint')end)
   text('Pick a color. Choose metallic or matte.',533,559,500,26,13,'muted')
+ end
+ local function fun()
+  U.paintballColor=U.paintballColor or{1,.12,.025}
+  button('Spawn paintball gun',218,112,190,36,function()execute(function()return B.paintball.spawn('gun',U.paintballColor)end)end,false,true)
+  button('Spawn 50 paintballs',462,112,190,36,function()execute(function()return B.paintball.spawn('pod',U.paintballColor)end)end,false,true)
+  if not valid(U.wheel)then U.wheel=StaticFindObject('/Script/Engine.Default__KismetRenderingLibrary'):ImportFileAsTexture2D(U.pc,B.root..'/assets/color-wheel.png')end
+  local icon=image(U.wheel,419,117,26,26);if valid(icon)then icon:SetToolTipText(FText('Choose paintball color'))end
+  hit(413,112,38,36,function()U.colorDraft={table.unpack(U.paintballColor)};U.brightness=math.max(table.unpack(U.colorDraft));U.mode='paintballcolor';U.render()end)
+  local c=U.paintballColor;box(423,149,18,3,{R=c[1],G=c[2],B=c[3],A=1},2)
  end
  local function world()
   section('World',218,104,'Set the time and weather for this session.')
@@ -132,10 +144,10 @@ return function(B)
   end
  end
  local function colorWheel()
-  local paint=U.mode=='paint';local car=U.mode=='carcolor';local rgb=paint and U.paint or U.colorDraft
+  local paint=U.mode=='paint';local car=U.mode=='carcolor';local paintball=U.mode=='paintballcolor';local rgb=paint and U.paint or U.colorDraft
   box(186,80,875,570,{R=0,G=0,B=0,A=.38},20);hit(186,80,875,570,function()end)
   box(266,142,730,456,'background',24,'border',1.2)
-  text(paint and'Spraypaint maker'or car and'Car color'or'Choose a color',292,164,610,34,23,'text',true)
+  text(paint and'Spraypaint maker'or car and'Car color'or paintball and'Paintball color'or'Choose a color',292,164,610,34,23,'text',true)
   button('×',928,158,44,38,U.back,false,true)
   text(paint and'Choose a color and finish.'or'Press Apply to save this color.',292,208,660,24,12,'muted')
   if not valid(U.wheel)then U.wheel=StaticFindObject('/Script/Engine.Default__KismetRenderingLibrary'):ImportFileAsTexture2D(U.pc,B.root..'/assets/color-wheel.png')end
@@ -153,7 +165,10 @@ return function(B)
   end);button('+',914,410,52,42,function()
    local mx=math.max(rgb[1],rgb[2],rgb[3],.001);local n=math.min(1,mx+.1);for i=1,3 do rgb[i]=rgb[i]/mx*n end;U.brightness=n;U.render()
   end)
-  if car then
+  if paintball then
+   text('Used for newly spawned paintball canisters.',590,476,376,28,12,'muted')
+   button('Apply',590,530,376,44,function()U.paintballColor={table.unpack(U.colorDraft)};U.mode=nil;U.render()end,true)
+  elseif car then
    check('Metallic',U.carMetalDraft,590,476,158,function()U.carMetalDraft=true;U.render()end);check('Matte',not U.carMetalDraft,788,476,158,function()U.carMetalDraft=false;U.render()end)
    button('Apply',590,530,376,44,function()U.carPaint={table.unpack(U.colorDraft)};U.carMetallic=U.carMetalDraft;B.catalog.preparePaint();U.mode='cars';U.render()end,true)
   elseif paint then
@@ -171,7 +186,7 @@ return function(B)
    local bg=box(x,y,w,94,'button',16,'line',1)
    local tex=B.catalog.icon(row,cars,U.tuned);local picture=image(tex,x+16,y+5,w-32,56)
    if cars then U.iconSlots[#U.iconSlots+1]={row=row,widget=picture,texture=tex}end
-   local label=text(row.name,x+10,y+65,w-20,24,11,contrast(S.button),true)
+   local label=text(row.name,x+10,y+65,w-20,24,11,contrast(S.button),true,true)
    hit(x,y,w,94,function()execute(function()return B.catalog.spawn(row,cars,U.tuned)end,false)end,function()
     if valid(U.catalogHover)then U.catalogHover:SetText(FText(row.name))end
     if cars then U.pendingPreview=row;U.previewAt=os.clock()+1 end
@@ -202,14 +217,14 @@ return function(B)
   box(0,0,1080,690,S.color('background',S.transparent and S.opacity or 1),28,'border',1.5)
   box(12,12,174,666,{R=.018,G=.026,B=.039,A=.62},21)
   text('Beyond',30,32,140,37,27,'white',true);text('MENU',33,76,140,24,11,S.color('border'),true)
-  local tabs={'Player','Items','Car spawner','World','Settings'}
+  local tabs={'Player','Items','Car spawner','Fun','World','Settings'}
   for i,t in ipairs(tabs)do button(t,26,146+(i-1)*58,145,45,function()U.tab=t;U.mode=t=='Car spawner'and'cars'or nil;U.page=1;U.query='';if U.mode then B.catalog.ensure();B.optional.refresh()end;U.render()end,U.tab==t,true)end
   text('F8',35,610,60,27,14,'white',true);text('open / close',35,636,130,22,11,{R=.6,G=.67,B=.72,A=1})
   text(B.host()and'HOST SESSION'or'GUEST SESSION',218,36,550,24,10,'border',true)
   if U.mode and U.tab~='Car spawner'then button('Back',858,25,106,40,U.back,false,true)end
   button('×',989,23,48,42,U.close,false,false)
-  if U.mode=='scoreboard'then scoreboard()elseif U.mode=='paint'or U.mode=='color'or U.mode=='carcolor'then if U.mode=='paint'then items()elseif U.mode=='carcolor'then catalog()else settings()end;colorWheel()elseif U.mode=='items'or U.mode=='cars'then catalog()
-  elseif U.tab=='Player'then player()elseif U.tab=='Items'then items()elseif U.tab=='World'then world()elseif U.tab=='Settings'then settings()end
+  if U.mode=='scoreboard'then scoreboard()elseif U.mode=='paint'or U.mode=='color'or U.mode=='carcolor'or U.mode=='paintballcolor'then if U.mode=='paint'then items()elseif U.mode=='carcolor'then catalog()elseif U.mode=='paintballcolor'then fun()else settings()end;colorWheel()elseif U.mode=='items'or U.mode=='cars'then catalog()
+  elseif U.tab=='Player'then player()elseif U.tab=='Items'then items()elseif U.tab=='Fun'then fun()elseif U.tab=='World'then world()elseif U.tab=='Settings'then settings()end
   if U.pages and(U.mode=='items'or U.mode=='cars'or U.mode=='scoreboard')then
    button('‹',882,611,44,34,function()U.page=math.max(1,U.page-1);U.render()end,false,true)
    text(U.page..' / '..U.pages,935,620,62,22,11,'muted');button('›',997,611,40,34,function()U.page=math.min(U.pages,U.page+1);U.render()end,false,true)

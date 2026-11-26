@@ -1,3 +1,10 @@
+# 0.2.0
+
+- Spawn a paintball marker and 50-round canisters in the new Fun tab. Choose the fill with the color wheel. Aim at a canister with the marker in hand and press **L** to top up matching paint or swap to a different color.
+- Paintballs leave colored splashes. Repeated hits on wet paint form runs on walls and pools on floors. The mod stores paint and ammunition alongside each native save revision.
+- Toggle flight and noclip from Player, hold Shift to accelerate, or select Open Computer to access the in-game desktop.
+- Compact the paintball controls and simplify menu text.
+
 # 0.1.1
 
 - Fix BMM ZIP import, declare the tested UE4SS build, and initialize thumbnail storage before opening the menu.

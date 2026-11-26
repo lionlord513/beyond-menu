@@ -65,6 +65,9 @@ return function(B)
   sky['Time of Day']=value;sky['Replicated Time of Day']=value;sky['OnRep_Replicated Time of Day'](sky);sky:ForceNetUpdate();return'Time changed'
  end
  function A.weather(index)B.context(true);B.pc().BP_DebugMenuComponent:DebugWeather(index);return'Weather changed'end
+ local computer=dofile(B.root..'/Scripts/computer.lua')(B)
+ A.computer=computer.open
+ A.computerSession=computer
  function A.tick()
   if not B.ready()or not B.host()then return end
   local world=B.player():GetWorld():GetAddress()
@@ -77,8 +80,8 @@ return function(B)
   end
   each('BrushMasterItem_C','brush',function(a)refill(a,'brush')end)
   each('PaintBombMasterItem_C','paint',function(a)refill(a,'paint')end)
-  each('BulletWeaponMasterItem_C','ammo',function(a)B.remember(a,'NbBulletMax',99999);B.remember(a,'NbBullet',99999);a:ForceNetUpdate()end)
+  each('BulletWeaponMasterItem_C','ammo',function(a)if B.paintball and B.paintball.isGun(a)then return end;B.remember(a,'NbBulletMax',99999);B.remember(a,'NbBullet',99999);a:ForceNetUpdate()end)
  end
- function A.reset()end
+ function A.reset()computer.reset()end
  return A
 end

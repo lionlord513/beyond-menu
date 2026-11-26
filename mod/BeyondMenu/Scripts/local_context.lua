@@ -15,5 +15,9 @@ return function(valid)
  function H.GetWorld()
   local pc=H.GetPlayerController();return pc and pc:GetWorld()
  end
+ function H.IsPauseMenu(pc)
+  local game=StaticFindObject('/Script/Engine.Default__GameplayStatics')
+  return not valid(pc)or game:IsGamePaused(pc)
+ end
  return H
 end
