@@ -118,6 +118,10 @@ return function(B)
    mark.at=P.add(mark.at,R.origin)
   elseif valid(c)then
    local tr=transform(c,mark.bone);scale=tr.Scale3D
+   if owner:sub(1,2)=='p:'then
+    local o=game:GetWorldOriginLocation(R.pawn or B.player())
+    mark.anchor={at=P.add(mark.at,o),normal=n,class=c:GetOwner():GetClass():GetFName():ToString()}
+   end
    mark.at=mathlib:InverseTransformLocation(tr,mark.at);mark.normal=P.unit(mathlib:InverseTransformDirection(tr,mark.normal))
    mark.gravity=P.unit(mathlib:InverseTransformDirection(tr,P.v(0,0,-1)));incoming=mathlib:InverseTransformDirection(tr,incoming)
   end
@@ -138,10 +142,11 @@ return function(B)
    local u,v=P.basis(closest.normal);local hits=closest.imprints or {};closest.imprints=hits
    if #hits==4 then table.remove(hits,1)end
    hits[#hits+1]={x=P.dot(offset,u),y=P.dot(offset,v),radius=mark.radius,seed=mark.seed}
-   P.accumulate(closest,mark.color);closest.seenAt=R.clock;R.fresh=closest
-   local r=R.rendered[closest];if r then r.dirty=true end;return closest
+   if closest.remaining then closest.remaining=(closest.remaining*closest.volume+1)/(closest.volume+1)end
+   P.accumulate(closest,mark.color);closest.paintedAt=os.time();closest.seenAt=R.clock;R.fresh=closest
+   local r=R.rendered[closest];if r then r.dirty=true end;J.persist(closest);return closest
   end
-  mark.seenAt=R.clock;J.marks[#J.marks+1]=mark;R.fresh=mark;return mark
+  mark.seenAt=R.clock;J.marks[#J.marks+1]=mark;R.fresh=mark;J.persist(mark);return mark
  end
  function R.resolve(p)
   if p.owner==''then return nil end
@@ -153,6 +158,31 @@ return function(B)
    return p.at
   end
   local c=R.resolve(p);if valid(c)then return mathlib:TransformLocation(transform(c,p.bone),p.at)end
+ end
+ function R.scrub(hit,strength)
+  if not J.ready or not B.host() or not hit or not valid(hit.component) or not(strength and strength>0 and strength<math.huge)then return 0 end
+  local owner,component=R.target(hit.component,hit.bone);local address=hit.component:GetAddress();local count=0
+  -- Only rendered paint within arm's reach can be touched. Distance culling
+  -- never modifies the ledger or the remaining amount of any mark.
+  for mark,r in pairs(R.rendered)do
+   local matches=(mark.owner==owner and (owner=='' or mark.component==component))or r.surfaceAddress==address
+   if matches then
+    local surface=R.resolve(mark)
+    local centre=R.worldPoint(mark);local n,g=mark.normal,mark.gravity
+    if valid(surface)then local tr=transform(surface,mark.bone);n=mathlib:TransformDirection(tr,n);g=mathlib:TransformDirection(tr,g)end
+    local wear=centre and P.brushWear(mark,P.add(hit.at,centre,-1),n,g,hit.normal,strength)
+    if wear then
+     count=count+1;local remaining=(mark.remaining or 1)-wear
+     if remaining<=.001 then
+      if valid(r.visual)and valid(r.owner)then r.visual:K2_DestroyComponent(r.owner)end
+      R.rendered[mark]=nil;if R.fresh==mark then R.fresh=nil end
+      for i=#J.marks,1,-1 do if J.marks[i]==mark then table.remove(J.marks,i);break end end
+      J.persist(mark,true)
+     else mark.remaining=remaining;r.dirty=true;R.fresh=mark;J.persist(mark)end
+    end
+   end
+  end
+  return count
  end
  R.draw=dofile(root..'splats.lua')(B,R)
  R.projectiles=dofile(root..'projectile.lua')(B,R)
@@ -166,7 +196,10 @@ return function(B)
    end
   end
   if not R.frameHook then R.frameHook={RegisterHook('/Game/BP/Player/PlayerBase.PlayerBase_C:ReceiveTick',function(ctx,dt)
-   if same(ctx:get(),B.player())then local frameDt=dt:get();if #R.balls>0 then R.projectiles.frame(frameDt)end;local ok,e=pcall(R.view.frame,frameDt);if not ok and R.viewError~=tostring(e)then R.viewError=tostring(e);B.log('Paintball view: '..tostring(e))end end
+   local p=ctx:get();if not same(p,B.player())then return end
+   R.interaction.middleFrame(p,B.pc())
+   local frameDt=dt:get();if #R.balls>0 then R.projectiles.frame(frameDt)end
+   local ok,e=pcall(R.view.frame,frameDt);if not ok and R.viewError~=tostring(e)then R.viewError=tostring(e);B.log('Paintball view: '..tostring(e))end
   end)}end
   for id,entry in pairs(R.items)do if not valid(entry.actor)then R.items[id]=nil end end
   if R.clock >= (R.nextItemLookup or 0) then
@@ -187,11 +220,25 @@ return function(B)
   -- every second just because one painted object is beyond streaming range.
   if R.clock >= (R.resolveAt or 0) and #J.marks>0 then
    R.resolveAt=R.clock+3
-   local wanted={}
+   local wanted={};local probes=0
    for i=1,math.min(128,#J.marks) do
+    if probes>=4 then break end
     R.resolveIndex=((R.resolveIndex or 0)%#J.marks)+1
     local mark=J.marks[R.resolveIndex]
-    if mark.owner~='' and not valid(R.resolve(mark)) then wanted[mark.owner]=true end
+    if mark.owner~='' and not valid(R.resolve(mark)) then
+     if mark.anchor then
+      -- Procedurally recreated scenery can acquire a different object name.
+      -- Reattach only to the same class and physical surface at the saved point.
+      if probes<4 then
+       local anchor=mark.anchor;local at=P.add(anchor.at,R.origin,-1)
+       local h=R.trace(P.add(at,anchor.normal,6),P.add(at,anchor.normal,-6),.15,{B.player()});probes=probes+1
+       if h and valid(h.component)and P.dot(h.normal,anchor.normal)>.85 and h.component:GetOwner():GetClass():GetFName():ToString()==anchor.class then
+        local restored=mathlib:TransformLocation(transform(h.component,mark.bone),mark.at)
+        if P.distance(restored,h.at)<36 then R.targets[mark.owner..'|'..mark.component]=h.component end
+       end
+      end
+     else wanted[mark.owner]=true end
+    end
    end
    local function remember(key,actor)
     if not valid(actor)then return end
@@ -224,6 +271,7 @@ return function(B)
   if R.clock>=R.scanAt then R.scanAt=R.clock+1;R.scan()end
   if not J.ready then return end
   R.interaction.tick()
+  R.brush.tick(dt)
   local pc,p=B.pc(),B.player();local gun=p.ItemEquiped;local row=R.record(gun)
   if row and row.kind=='gun'then
    gun.NbBullet=0;gun.NbBulletMax=0;gun.IsAttacking=1000
@@ -231,7 +279,7 @@ return function(B)
   local pos=p:K2_GetActorLocation()
   local builds=0
   local function visit(mark)
-   mark.wet=math.min(30,mark.wet+math.max(0,R.clock-(mark.seenAt or (R.clock-dt))))
+   mark.wet=math.min(46,mark.wet+math.max(0,R.clock-(mark.seenAt or (R.clock-dt))))
    mark.seenAt=R.clock
    local at=R.worldPoint(mark)
    local r=R.rendered[mark]
@@ -251,7 +299,7 @@ return function(B)
   end
  end
  function R.reset()
-  R.view.reset();R.interaction.reset()
+  R.view.reset();R.interaction.reset();R.brush.reset()
   R.fresh=nil;R.pawn=nil;R.origin=nil;R.lastScanOrigin=nil;R.resolveAt=nil;R.resolveIndex=nil;R.paintIndex=nil;R.nextItemLookup=nil
 
   for _,r in pairs(R.rendered)do if valid(r.owner)and valid(r.visual)then r.visual:K2_DestroyComponent(r.owner)end end
@@ -259,6 +307,7 @@ return function(B)
   R.projectiles.reset();A.reset();J.reset();R.balls={};R.items={};R.rendered={};R.targets={};R.clock=0;R.scanAt=0
  end
  R.interaction=dofile(root..'interaction.lua')(B,R)
+ R.brush=dofile(root..'brush.lua')(B,R)
  RegisterKeyBind(Key.L,function()B.enqueue(function()R.interaction.loadPressed()end)end)
  RegisterKeyBind(Key.LEFT_MOUSE_BUTTON,function()
   if not B.ui.opened then B.enqueue(function()R.interaction.firePressed()end)end

@@ -67,6 +67,27 @@ return function(B,R)
    I.repeatGun=gun;I.repeatAt=R.clock+.16
   end
  end
+ local middle={KeyName=FName('MiddleMouseButton')}
+ local mouseX={KeyName=FName('MouseX')};local mouseY={KeyName=FName('MouseY')}
+ function I.middleFrame(p,pc)
+  if not valid(pc)then I.middle=nil;return end
+  if not I.middle then
+   if not pc:WasInputKeyJustPressed(middle)then return end
+   local gun=p.ItemEquiped
+   if not R.isGun(gun)or not inputReady(pc)then return end
+   I.middle={gun=gun,started=game:GetRealTimeSeconds(p),motion=0}
+  end
+  local press=I.middle
+  if not same(press.gun,p.ItemEquiped)or not inputReady(pc)then I.middle=nil;return end
+  press.motion=press.motion+math.abs(pc:GetInputAnalogKeyState(mouseX))+math.abs(pc:GetInputAnalogKeyState(mouseY))
+  local released=pc:WasInputKeyJustReleased(middle)
+  if game:GetRealTimeSeconds(p)-press.started>=.24 or press.motion>=4 then
+   I.middle=nil
+  elseif released then
+   I.middle=nil
+   p:RemoveEquipedItem()
+  elseif not pc:IsInputKeyDown(middle)then I.middle=nil end
+ end
  local function addPrompt(hud)
   local parent=hud.ActionBox:GetParent();if not valid(parent)then return end
   local prompt=StaticConstructObject(StaticFindObject('/Script/UMG.TextBlock'),hud.WidgetTree)
@@ -112,6 +133,7 @@ return function(B,R)
   end
  end
  function I.reset()
+  I.middle=nil
   I.capture.release()
   if valid(I.prompt)then I.prompt:RemoveFromParent()end;I.prompt=nil;I.repeatAt=nil;I.repeatGun=nil;removeAmmo()
  end

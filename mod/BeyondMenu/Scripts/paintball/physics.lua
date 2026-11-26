@@ -67,6 +67,25 @@ function P.depositOffset(old,hit,scale)
  if distance>reach*reach or math.abs(x*old.normal.X+y*old.normal.Y+z*old.normal.Z)>math.min(3,reach*.19)then return end
  return distance,P.v(x,y,z)
 end
+function P.brushWear(mark,delta,normal,gravity,contactNormal,strength)
+ local depth=P.dot(delta,normal)
+ if math.abs(depth)>3.5 or P.dot(normal,contactNormal)<.80 then return end
+ local fraction=math.sqrt(mark.remaining or 1)
+ local radial=math.sqrt(math.max(0,P.dot(delta,delta)-depth*depth))
+ local brushRadius=5.5
+ local reach=math.max(mark.radius*mark.stretch*1.6,mark.pool*1.17)*fraction
+ local edge=radial-reach
+ if mark.drip>0 then
+  local down=P.unit(P.add(gravity,normal,-P.dot(gravity,normal)));local along=P.dot(delta,down)
+  if along>0 and along<=mark.drip*fraction+brushRadius then
+   local side=math.abs(P.dot(delta,P.cross(normal,down)))
+   edge=math.min(edge,side-(mark.radius*.7+1)*fraction)
+  end
+ end
+ if edge>=brushRadius then return end
+ local contact=1-math.max(edge,0)/brushRadius
+ return strength*contact/math.min(6,1+.65*math.sqrt(mark.volume-1))
+end
 -- A burst may throw out a narrow sheet, a few heavy lobes, a crown of thin
 -- fingers or a cloud of fine drops. Generate the outline and secondary drops
 -- from the same jets so their placement follows the direction of the splash.

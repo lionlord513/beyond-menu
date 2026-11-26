@@ -25,7 +25,7 @@ return function(B, R)
   mesh:K2_SetRelativeTransform({Translation=position, Rotation=A.identity.Rotation, Scale3D=A.identity.Scale3D}, false, {}, true)
   mesh:SetHiddenInGame(false, false)
   mesh:SetVisibility(true, false)
-  return {visual=mesh, owner=actor, dirty=true}
+  return {visual=mesh, owner=actor, surfaceAddress=B.valid(target)and target:GetAddress()or nil, dirty=true}
  end
 
  -- Sample a small patch once. Interpolate signed height around the impact to
@@ -192,6 +192,13 @@ return function(B, R)
   end
   local initial=#geo.vertices
   trails(geo,mark,patch,down,radius,record)
+  if mark.remaining then
+   local fraction=math.sqrt(mark.remaining)
+   for i,point in ipairs(geo.vertices)do
+    local depth=P.dot(point,mark.normal)
+    geo.vertices[i]=P.add(P.add(origin,point,fraction),mark.normal,depth*(1-fraction))
+   end
+  end
   for i=initial,#geo.vertices-1 do keep[i]=true end
   local indices={}
   for i=1,#geo.triangles,3 do

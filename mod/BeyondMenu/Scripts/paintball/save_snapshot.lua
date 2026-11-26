@@ -1,5 +1,4 @@
--- DBH can create a named save with a zero revision GUID. That file may be
--- overwritten. A numbered revision stays immutable and belongs to one save.
+-- Replace the sidecar with the same native save revision when it is overwritten.
 local function activeSave(save)
  local engine=FindFirstOf('GameEngine')
  if not engine or not engine:IsValid()or not engine.GameViewport:IsValid()then return false end
@@ -16,14 +15,14 @@ local function read(path)
  if not f then return end
  local bytes=f:read('*a');f:close();return bytes
 end
-local function commit(path,key,bytes)
- local previous=read(path)
- if previous==bytes then return end
- if previous then assert(key:find('-'..string.rep('0',32)..'-',1,true),'Native save reused a revision with different records')end
+local function replace(path,bytes)
  local f=assert(io.open(path..'.tmp','wb'));assert(f:write(bytes));assert(f:close())
  local old=io.open(path,'rb')
  if old then old:close();os.remove(path..'.bak');assert(os.rename(path,path..'.bak'))end
  local ok,err=os.rename(path..'.tmp',path)
  if not ok then if old then os.rename(path..'.bak',path)end;error(err)end
 end
-return {active=activeSave,read=read,commit=commit}
+local function commit(path,key,bytes)
+ if read(path)~=bytes then replace(path,bytes)end
+end
+return {active=activeSave,read=read,commit=commit,replace=replace}

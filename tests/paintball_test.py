@@ -1,4 +1,6 @@
 from pathlib import Path
+import shutil
+import tempfile
 import unittest
 from lupa.lua54 import LuaRuntime
 
@@ -52,5 +54,58 @@ class PaintballTests(unittest.TestCase):
    P.accumulate(floor,nearby.color);assert(floor.pool>=floor.radius+4 and floor.drip==0)
    local wall=P.impact(P.v(0,0,0),P.v(0,1,0),{1,0,0},21)
    P.accumulate(wall,{0,0,1});assert(wall.drip>=wall.radius+8 and wall.pool==0)''')
+ def test_brush_only_touches_the_contact_surface(self):
+  self.check('''local m=P.impact(P.v(0,0,0),P.v(1,0,0),{1,0,0},9)
+   local function stroke(offset,n) return P.brushWear(m,offset,m.normal,m.gravity,n,1) end
+   assert(stroke(P.v(0,0,0),m.normal)==1)
+   assert(not stroke(P.v(0,0,0),P.v(-1,0,0)) and not stroke(P.v(5,0,0),m.normal))
+   assert(not stroke(P.v(0,0,-28),m.normal));m.drip=40;assert(stroke(P.v(0,0,-28),m.normal))
+   m.remaining=.1;assert(not stroke(P.v(0,0,-28),m.normal))''')
+ def test_world_paint_survives_restart_rollback_and_torn_tail(self):
+  with tempfile.TemporaryDirectory() as tmp:
+   base=Path(tmp);(base/'state').mkdir();shutil.copytree(ROOT/'mod/BeyondMenu/Scripts/paintball',base/'Scripts/paintball')
+   self.lua.globals().ROOT=base.as_posix()
+   self.check('''RegisterHook=function()return 1,2 end;StaticFindObject=function()return {}end
+    local B={root=ROOT,valid=function(o)return o~=nil end};local create=dofile(ROOT..'/Scripts/paintball/journal.lua')
+    local function guid(a)return {A=a,B=1,C=3,D=4}end
+    local function slot(world,revision)return {IsA=function()return true end,SaveGameMetadata={SaveName={Guid=guid(world),GuidUnique=guid(revision),Iterator=1}}}end
+    local old,new,other=slot(15,1),slot(15,2),slot(16,1)
+    local function open(s)local j=create(B,P);j.load(s);assert(j.ready);return j end
+    local j=open(old);local m=P.impact(P.v(41,3,8),P.v(0,0,1),{.1,.2,.3},25);m.owner='';m.component='WorldOrigin';m.bone='None'
+    j.marks[1]=m;j.persist(m);j.capture(old)
+    local extra=P.impact(P.v(7,-2,5),P.v(1,0,0),{0,1,0},47);extra.owner='p:fixture';extra.component='Panel';extra.bone='None'
+    extra.anchor={class='Panel_C',at=P.v(1e6,2,8),normal=P.v(1,0,0)};j.marks[2]=extra;j.persist(extra)
+    j=open(old);assert(#j.marks==2 and j.marks[2].anchor.class=='Panel_C');j.capture(new)
+    j.marks[1].remaining=.41;j.persist(j.marks[1]);j.persist(j.marks[2],true);table.remove(j.marks,2)
+    j=open(new);assert(#j.marks==1 and j.marks[1].remaining==.41);j.capture(new)
+    local key=j.key(old);local path=ROOT..'/state/paint-world-'..key:sub(1,32)..'.log'
+    local f=assert(io.open(path,'ab'));f:write('U\\t123\\tP\\tinterrupted');f:close()
+    j=open(old);assert(#j.marks==1 and j.marks[1].remaining==.41)
+    j.persist(j.marks[1],true);j.marks={};assert(#open(other).marks==0);assert(#open(old).marks==0 and #open(new).marks==0)''')
+
+ def test_middle_tap_holsters_while_drag_hold_and_item_changes_cancel(self):
+  self.lua.globals().ROOT=str(ROOT/'mod/BeyondMenu').replace('\\','/')
+  self.check('''local now=0
+   FName=function(s)return s end
+   StaticFindObject=function()return{GetRealTimeSeconds=function()return now end}end
+   local gun={GetAddress=function()return 11 end};local other={GetAddress=function()return 12 end}
+   local B={root=ROOT,valid=function(v)return v~=nil end,host=function()return true end,ui={},H={IsPauseMenu=function()return false end}}
+   local R={isGun=function(v)return v==gun end}
+   local I=dofile(ROOT..'/Scripts/paintball/interaction.lua')(B,R)
+   local p={ItemEquiped=gun,drops=0,RemoveEquipedItem=function(p)p.drops=p.drops+1;p.ItemEquiped=nil end}
+   local pc={HUD={ChatUI={}},WasInputKeyJustPressed=function(pc)return pc.press end,
+    WasInputKeyJustReleased=function(pc)return pc.release end,IsInputKeyDown=function(pc)return pc.down end,
+    GetInputAnalogKeyState=function(pc,key)return key.KeyName=='MouseX'and pc.dx or 0 end}
+   local function frame(t,press,down,release,dx)
+    now=t;pc.press=press;pc.down=down;pc.release=release;pc.dx=dx or 0;I.middleFrame(p,pc)
+   end
+   frame(0,true,false,true);assert(p.drops==1,'same-frame tap missed')
+   p.ItemEquiped=gun;frame(1,true,true,false);frame(1.045,false,false,true);assert(p.drops==2)
+   p.ItemEquiped=gun;frame(2,true,true,false);frame(2.26,false,false,true);assert(p.drops==2,'long hold unequipped')
+   frame(3,true,true,false);frame(3.02,false,true,false,2.5);frame(3.04,false,false,true,-2);assert(p.drops==2,'drag unequipped')
+   frame(4,true,true,false);p.ItemEquiped=other;frame(4.05,false,false,true);assert(p.drops==2)
+   p.ItemEquiped=nil;frame(5,true,false,true);assert(p.drops==2,'physics-only grab or loose item consumed')
+   p.ItemEquiped=gun;frame(6,true,true,false);B.ui.opened=true;frame(6.05,false,false,true);assert(p.drops==2)
+   B.ui.opened=false;frame(7,true,true,false);I.reset();frame(7.05,false,false,true);assert(p.drops==2)''')
 
 if __name__=='__main__':unittest.main(verbosity=2)
