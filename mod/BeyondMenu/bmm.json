@@ -1,10 +1,10 @@
 {
   "Id": "beyondmenu",
   "Name": "BeyondMenu",
-  "Version": "0.2.2",
+  "Version": "0.2.3",
   "Channel": "stable",
   "Description": "An F8 game menu with paintball, flight, item and car catalogs, player tools and custom colors.",
-  "Changelog": "Preserves paint and polishing-brush cleanup across restarts and save slots in the same world. Tap middle mouse to put away the equipped paintball gun, or hold and drag to rotate.",
+  "Changelog": "Restore the native empty-hand pose after releasing the paintball gun.",
   "Dependencies": [
     "UE4SS"
   ],

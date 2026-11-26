@@ -69,6 +69,19 @@ return function(B,R)
  end
  local middle={KeyName=FName('MiddleMouseButton')}
  local mouseX={KeyName=FName('MouseX')};local mouseY={KeyName=FName('MouseY')}
+ local function releasePose(p,pc)
+  local marker=I.poseMarker
+  if not marker then return end
+  if same(marker,p.ItemEquiped)then return end
+  if not valid(p.ItemEquiped) and p.OverlayState==I.markerOverlay then
+   local held={};pc:GetItemInHand(held)
+   if same(held.Item,marker)then return end
+   -- Native drop clears the inventory references but can leave ALS aiming
+   -- the character's right arm. Zero is the native Default overlay.
+   if not valid(held.Item)then p:SetOverlayState(0,true)end
+  end
+  I.poseMarker=nil;I.markerOverlay=nil
+ end
  function I.middleFrame(p,pc)
   if not valid(pc)then I.middle=nil;return end
   if not I.middle then
@@ -85,12 +98,14 @@ return function(B,R)
    I.middle=nil
   elseif released then
    I.middle=nil
+   I.poseMarker=press.gun;I.markerOverlay=press.gun.EALSOverlay
    p:RemoveEquipedItem()
    local hand={};pc:GetItemInHand(hand)
    if same(hand.Item,press.gun)then
     pc:RemoveItemInHand()
     if valid(press.gun)then press.gun:DropItem()end
    end
+   releasePose(p,pc)
   elseif not pc:IsInputKeyDown(middle)then I.middle=nil end
  end
  local function addPrompt(hud)
@@ -126,6 +141,9 @@ return function(B,R)
   if valid(I.prompt)then I.prompt:SetVisibility(active and 3 or 1)end
   local equipped=B.player().ItemEquiped
   local equippedRow=R.record(equipped)
+  if equippedRow and equippedRow.kind=='gun'then
+   I.poseMarker=equipped;I.markerOverlay=equipped.EALSOverlay
+  else releasePose(B.player(),pc)end
   I.capture.apply(pc,equippedRow and equippedRow.kind=='gun'and inputReady(pc))
   I.updateAmmo(equippedRow)
   if I.repeatAt then
@@ -138,6 +156,7 @@ return function(B,R)
   end
  end
  function I.reset()
+  I.poseMarker=nil;I.markerOverlay=nil
   I.middle=nil
   I.capture.release()
   if valid(I.prompt)then I.prompt:RemoveFromParent()end;I.prompt=nil;I.repeatAt=nil;I.repeatGun=nil;removeAmmo()

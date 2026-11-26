@@ -1,3 +1,7 @@
+# 0.2.3
+
+- Restore the native empty-hand pose after releasing the paintball gun.
+
 # 0.2.2
 
 - Preserve paintball splashes, wall drips and ground pools across saves and game restarts. Loading an older slot in the same world keeps its paint and cleanup history.
